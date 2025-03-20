@@ -1,0 +1,2 @@
+D:/Elk Projects/loop/android/app/.cxx/Debug/5k5m7127/x86/CMakeFiles/edit_cache.dir
+D:/Elk Projects/loop/android/app/.cxx/Debug/5k5m7127/x86/CMakeFiles/rebuild_cache.dir
