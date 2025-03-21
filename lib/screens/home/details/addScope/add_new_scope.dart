@@ -2,11 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loop/core/components/custom_dropdown.dart';
 import 'package:loop/core/const/palette.dart';
-import 'package:loop/core/const/styles.dart';
-import 'package:loop/provider/home/home_provider.dart';
-import 'package:loop/static_data.dart';
+import 'package:loop/screens/home/details/addScope/ask_new_feasibility.dart';
+import 'package:loop/screens/home/details/addScope/ask_scope_tab.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:number_to_words/number_to_words.dart';
 import 'package:file_picker/file_picker.dart';
@@ -24,6 +22,9 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   String? selectedServiceId;
   String? selectedSubjectId;
   String? selectedTagId;
+  String? selectedUserId;
+  String? customCurrencyType;
+  String? customSubjectType;
   late TabController _tabController;
 
   bool isBasicSelected = false;
@@ -67,8 +68,37 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     _basicWordCountController.addListener(_updateBasicWordCountText);
     _standardWordCountController.addListener(_updateStandardWordCountText);
     _advancedWordCountController.addListener(_updateAdvancedWordCountText);
-
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        _clearFormData();
+      }
+    });
     super.initState();
+  }
+
+  void _clearFormData() {
+    setState(() {
+      selectedCurrencyId = null;
+      selectedServiceId = null;
+      selectedSubjectId = null;
+      selectedTagId = null;
+      selectedUserId = null;
+      customCurrencyType = null;
+      customSubjectType = null;
+      isBasicSelected = false;
+      isStandardSelected = false;
+      isAdvancedSelected = false;
+      _basicWordCountText = "";
+      _standardWordCountText = "";
+      _advancedWordCountText = "";
+      _selectedFiles.clear();
+
+      // Clear HTML Editor fields
+      _basicController.clear();
+      _standardController.clear();
+      _advancedController.clear();
+      _commentController.clear();
+    });
   }
 
   @override
@@ -86,9 +116,8 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   void _updateBasicWordCountText() {
     setState(() {
       int? count = int.tryParse(_basicWordCountController.text);
-      _basicWordCountText = (count != null)
-          ? NumberToWord().convert('en-in', count) // Converts number to words
-          : "";
+      _basicWordCountText =
+          (count != null) ? NumberToWord().convert('en-in', count) : "";
     });
   }
 
@@ -121,7 +150,7 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     super.dispose();
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     // Validation
     if (selectedCurrencyId == null) {
       _showError("Please select a currency.");
@@ -149,6 +178,9 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     print("Selected Service ID: $selectedServiceId");
     print("Selected Subject ID: $selectedSubjectId");
     print("Selected Tag ID: $selectedTagId");
+    print("Selected custom currency ID: $customCurrencyType");
+    print("Selected custom Subject ID: $customSubjectType");
+
     print("Basic Plan Selected: $isBasicSelected");
     print("Standard Plan Selected: $isStandardSelected");
     print("Advanced Plan Selected: $isAdvancedSelected");
@@ -177,9 +209,6 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
 
   @override
   Widget build(BuildContext context) {
-    final serviceData = ref.watch(serviceDropdownProvider);
-    final currencyData = ref.watch(currencyDropdownProvider);
-    final tagData = ref.watch(tagsDropdownProvider);
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
@@ -208,433 +237,143 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                 controller: _tabController,
                 children: [
                   // custom widget
-                  SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            currencyData.when(
-                              data: (currencies) {
-                                final currencyMap = {
-                                  for (var currency in currencies)
-                                    currency['name'].toString():
-                                        currency['id'].toString(),
-                                };
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    title('Currency'),
-                                    CustomDropDown(
-                                      dropdownWidth:
-                                          MediaQuery.sizeOf(context).width /
-                                              2.2,
-                                      icon: Icons.currency_rupee_rounded,
-                                      items: currencyMap.keys.toList(),
-                                      title: 'Select Currency',
-                                      onSelectionChanged: (selectedName) {
-                                        setState(() {
-                                          selectedCurrencyId =
-                                              currencyMap[selectedName];
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                );
-                              },
-                              loading: () => const CircularProgressIndicator(),
-                              error: (err, stack) =>
-                                  Text("Error: ${err.toString()}"),
-                            ),
-                            serviceData.when(
-                              data: (services) {
-                                final serviceMap = {
-                                  for (var service in services)
-                                    service['name'].toString():
-                                        service['id'].toString(),
-                                };
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    title('Service'),
-                                    CustomDropDown(
-                                      dropdownWidth:
-                                          MediaQuery.sizeOf(context).width /
-                                              2.2,
-                                      icon: Icons.design_services,
-                                      items: serviceMap.keys.toList(),
-                                      title: 'Select Service',
-                                      onSelectionChanged: (selectedName) {
-                                        setState(() {
-                                          selectedServiceId =
-                                              serviceMap[selectedName];
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                );
-                              },
-                              loading: () => const CircularProgressIndicator(),
-                              error: (err, stack) =>
-                                  Text("Error: ${err.toString()}"),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        title('Subject Area'),
-                        CustomDropDown(
-                          dropdownWidth: MediaQuery.sizeOf(context).width,
-                          icon: Icons.subject,
-                          items: subjectMap.keys.toList(),
-                          title: 'Select Subject',
-                          onSelectionChanged: (selectedName) {
-                            setState(() {
-                              selectedSubjectId = subjectMap[selectedName];
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        title('Select Level'),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            checkboxWithLabel(
-                              label: 'Basic',
-                              value: isBasicSelected,
-                              color: Colors.green,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  isBasicSelected = value!;
-                                });
-                              },
-                            ),
-                            checkboxWithLabel(
-                              label: 'Standard',
-                              value: isStandardSelected,
-                              color: Colors.orange,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  isStandardSelected = value!;
-                                });
-                              },
-                            ),
-                            checkboxWithLabel(
-                              label: 'Advance',
-                              value: isAdvancedSelected,
-                              color: Colors.red,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  isAdvancedSelected = value!;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        tagData.when(
-                          data: (currencies) {
-                            final tagMap = {
-                              for (var tag in currencies)
-                                tag['tag_name'].toString():
-                                    tag['id'].toString(),
-                            };
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                title('Tags'),
-                                CustomDropDown(
-                                  dropdownWidth:
-                                      MediaQuery.sizeOf(context).width / 2.2,
-                                  icon: Icons.tag,
-                                  items: tagMap.keys.toList(),
-                                  title: 'Select Tags',
-                                  onSelectionChanged: (selectedName) {
-                                    setState(() {
-                                      selectedTagId = tagMap[selectedName];
-                                    });
-                                  },
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () => const CircularProgressIndicator(),
-                          error: (err, stack) =>
-                              Text("Error: ${err.toString()}"),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Additional Comments (optional)",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        HtmlEditor(
-                          controller: _commentController,
-                          htmlEditorOptions: const HtmlEditorOptions(
-                            hint: "Additional Comments",
-                          ),
-                          otherOptions: const OtherOptions(
-                            height: 200,
-                          ),
-                          htmlToolbarOptions: const HtmlToolbarOptions(
-                            defaultToolbarButtons: [
-                              FontButtons(clearAll: false),
-                              ParagraphButtons(
-                                alignCenter: true,
-                                alignLeft: true,
-                                alignRight: true,
-                                lineHeight: false,
-                                textDirection: false,
-                              ),
-                              InsertButtons(
-                                  table: false, video: false, audio: false),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 6,
-                        ),
-                        if (isBasicSelected) ...[
-                          const Text(
-                            "Add comment for Basic Plan (optional)",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          HtmlEditor(
-                            controller: _basicController,
-                            htmlEditorOptions: const HtmlEditorOptions(
-                              hint: "Add comment for Basic plan",
-                            ),
-                            otherOptions: const OtherOptions(
-                              height: 200,
-                            ),
-                            htmlToolbarOptions: const HtmlToolbarOptions(
-                              defaultToolbarButtons: [
-                                FontButtons(clearAll: false),
-                                ParagraphButtons(
-                                  alignCenter: true,
-                                  alignLeft: true,
-                                  alignRight: true,
-                                  lineHeight: false,
-                                  textDirection: false,
-                                ),
-                                InsertButtons(
-                                    table: false, video: false, audio: false),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            "Enter Word Count for Basic Plan",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.sizeOf(context).width / 2,
-                                child: TextField(
-                                  controller: _basicWordCountController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    hintText: "Enter word count",
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _basicWordCountText.isNotEmpty
-                                      ? _basicWordCountText
-                                      : "",
-                                ),
-                              ),
-                            ],
-                          )
-                        ],
-                        const SizedBox(height: 8),
-                        if (isStandardSelected) ...[
-                          const Text(
-                            "Add comment for Standard Plan (optional)",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          HtmlEditor(
-                            controller: _standardController,
-                            htmlEditorOptions: const HtmlEditorOptions(
-                              hint: "Add comment for Standard plan",
-                            ),
-                            otherOptions: const OtherOptions(
-                              height: 200,
-                            ),
-                            htmlToolbarOptions: const HtmlToolbarOptions(
-                              defaultToolbarButtons: [
-                                FontButtons(clearAll: false),
-                                ParagraphButtons(
-                                  alignCenter: true,
-                                  alignLeft: true,
-                                  alignRight: true,
-                                  lineHeight: false,
-                                  textDirection: false,
-                                ),
-                                InsertButtons(
-                                    table: false, video: false, audio: false),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            "Enter Word Count for Standard Plan",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.sizeOf(context).width / 2,
-                                child: TextField(
-                                  controller: _standardWordCountController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    hintText: "Enter word count",
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _standardWordCountText.isNotEmpty
-                                      ? _standardWordCountText
-                                      : "",
-                                ),
-                              ),
-                            ],
-                          )
-                        ],
-                        const SizedBox(height: 8),
-                        if (isAdvancedSelected) ...[
-                          const Text(
-                            "Add comment for Advanced Plan (optional)",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          HtmlEditor(
-                            controller: _advancedController,
-                            htmlEditorOptions: const HtmlEditorOptions(
-                              hint: "Add comment for Advanced plan",
-                            ),
-                            otherOptions: const OtherOptions(
-                              height: 200,
-                            ),
-                            htmlToolbarOptions: const HtmlToolbarOptions(
-                              defaultToolbarButtons: [
-                                FontButtons(clearAll: false),
-                                ParagraphButtons(
-                                  alignCenter: true,
-                                  alignLeft: true,
-                                  alignRight: true,
-                                  lineHeight: false,
-                                  textDirection: false,
-                                ),
-                                InsertButtons(
-                                    table: false, video: false, audio: false),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            "Enter Word Count for Advanced Plan",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.sizeOf(context).width / 2,
-                                child: TextField(
-                                  controller: _advancedWordCountController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    hintText: "Enter word count",
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(_advancedWordCountText.isNotEmpty
-                                    ? _advancedWordCountText
-                                    : ""),
-                              ),
-                            ],
-                          )
-                        ],
-                        title('Upload Files'),
-                        ElevatedButton.icon(
-                          onPressed: _pickFile,
-                          icon: const Icon(
-                            Icons.photo_filter_sharp,
-                            color: Colors.white,
-                          ),
-                          label: const Text("Select Files"),
-                        ),
-                        if (_selectedFiles.isNotEmpty)
-                          Column(
-                            children:
-                                _selectedFiles.asMap().entries.map((entry) {
-                              int index = entry.key;
-                              File file = entry.value;
-
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                decoration: cardDecoration(context: context),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        file.path.split('/').last,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap: () => _removeFile(index),
-                                      child: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton(
-                              onPressed: _submitForm,
-                              child: const Text('Submit')),
-                        )
-                      ],
-                    ),
+                  AskForScopeTab(
+                    selectedCurrencyId: selectedCurrencyId,
+                    selectedServiceId: selectedServiceId,
+                    selectedSubjectId: selectedSubjectId,
+                    customSubjectType: customSubjectType,
+                    selectedTagId: selectedTagId,
+                    customCurrencyType: customCurrencyType,
+                    isBasicSelected: isBasicSelected,
+                    isStandardSelected: isStandardSelected,
+                    isAdvancedSelected: isAdvancedSelected,
+                    basicController: _basicController,
+                    standardController: _standardController,
+                    advancedController: _advancedController,
+                    commentController: _commentController,
+                    basicWordCountController: _basicWordCountController,
+                    standardWordCountController: _standardWordCountController,
+                    advancedWordCountController: _advancedWordCountController,
+                    basicWordCountText: _basicWordCountText,
+                    standardWordCountText: _standardWordCountText,
+                    advancedWordCountText: _advancedWordCountText,
+                    selectedFiles: _selectedFiles,
+                    onCurrencyChanged: (selectedName) {
+                      setState(() {
+                        selectedCurrencyId = selectedName;
+                      });
+                      print(selectedCurrencyId);
+                    },
+                    onServiceChanged: (selectedName) {
+                      setState(() {
+                        selectedServiceId = selectedName;
+                      });
+                      print(selectedServiceId);
+                    },
+                    onSubjectChanged: (selectedName) {
+                      setState(() {
+                        selectedSubjectId = selectedName;
+                      });
+                    },
+                    onTagChanged: (selectedName) {
+                      setState(() {
+                        selectedTagId = selectedName;
+                      });
+                    },
+                    onBasicChanged: (value) {
+                      setState(() {
+                        isBasicSelected = value!;
+                      });
+                    },
+                    onStandardChanged: (value) {
+                      setState(() {
+                        isStandardSelected = value!;
+                      });
+                    },
+                    onAdvancedChanged: (value) {
+                      setState(() {
+                        isAdvancedSelected = value!;
+                      });
+                    },
+                    onCustomCurrencyChanged: (value) {
+                      setState(() {
+                        customCurrencyType = value;
+                      });
+                    },
+                    onPickFile: _pickFile,
+                    onRemoveFile: _removeFile,
+                    onSubmit: _submitForm,
                   ),
-                  const Center(child: Text("Communication Data")),
+                  AskForFeasibilityTab(
+                    selectedCurrencyId: selectedCurrencyId,
+                    selectedServiceId: selectedServiceId,
+                    selectedSubjectId: selectedSubjectId,
+                    selectedTagId: selectedTagId,
+                    customCurrencyType: customCurrencyType,
+                    isBasicSelected: isBasicSelected,
+                    isStandardSelected: isStandardSelected,
+                    isAdvancedSelected: isAdvancedSelected,
+                    basicController: _basicController,
+                    standardController: _standardController,
+                    advancedController: _advancedController,
+                    commentController: _commentController,
+                    basicWordCountController: _basicWordCountController,
+                    standardWordCountController: _standardWordCountController,
+                    advancedWordCountController: _advancedWordCountController,
+                    basicWordCountText: _basicWordCountText,
+                    standardWordCountText: _standardWordCountText,
+                    advancedWordCountText: _advancedWordCountText,
+                    selectedFiles: _selectedFiles,
+                    onCurrencyChanged: (selectedName) {
+                      setState(() {
+                        selectedCurrencyId = selectedName;
+                      });
+                    },
+                    onServiceChanged: (selectedName) {
+                      setState(() {
+                        selectedServiceId = selectedName;
+                      });
+                      print(selectedServiceId);
+                    },
+                    onSubjectChanged: (selectedName) {
+                      setState(() {
+                        selectedSubjectId = selectedName;
+                      });
+                    },
+                    onUserChanged: (selectedName) {
+                      setState(() {
+                        selectedUserId = selectedName;
+                      });
+                    },
+                    onTagChanged: (selectedName) {
+                      setState(() {
+                        selectedTagId = selectedName;
+                      });
+                    },
+                    onBasicChanged: (value) {
+                      setState(() {
+                        isBasicSelected = value!;
+                      });
+                    },
+                    onStandardChanged: (value) {
+                      setState(() {
+                        isStandardSelected = value!;
+                      });
+                    },
+                    onAdvancedChanged: (value) {
+                      setState(() {
+                        isAdvancedSelected = value!;
+                      });
+                    },
+                    onCustomCurrencyChanged: (value) {
+                      setState(() {
+                        customCurrencyType = value;
+                      });
+                    },
+                    onPickFile: _pickFile,
+                    onRemoveFile: _removeFile,
+                    onSubmit: _submitForm,
+                  ),
                 ],
               ),
             ),

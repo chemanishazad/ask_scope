@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:loop/core/components/custom_dropdown.dart';
@@ -10,13 +9,12 @@ import 'package:loop/core/const/styles.dart';
 import 'package:loop/provider/home/home_provider.dart';
 import 'package:loop/static_data.dart';
 
-class AskForScopeTab extends ConsumerStatefulWidget {
+class AskForFeasibilityTab extends ConsumerStatefulWidget {
   final String? selectedCurrencyId;
   final String? selectedServiceId;
   final String? selectedSubjectId;
   final String? selectedTagId;
   final String? customCurrencyType;
-  final String? customSubjectType;
   final bool isBasicSelected;
   final bool isStandardSelected;
   final bool isAdvancedSelected;
@@ -35,6 +33,7 @@ class AskForScopeTab extends ConsumerStatefulWidget {
   final Function(String?) onServiceChanged;
   final Function(String?) onSubjectChanged;
   final Function(String?) onTagChanged;
+  final Function(String?) onUserChanged;
   final Function(bool?) onBasicChanged;
   final Function(bool?) onStandardChanged;
   final Function(bool?) onAdvancedChanged;
@@ -43,13 +42,12 @@ class AskForScopeTab extends ConsumerStatefulWidget {
   final Function(int) onRemoveFile;
   final Function() onSubmit;
 
-  const AskForScopeTab({
+  const AskForFeasibilityTab({
     super.key,
     required this.selectedCurrencyId,
     required this.selectedServiceId,
     required this.selectedSubjectId,
     required this.selectedTagId,
-    required this.customSubjectType,
     required this.customCurrencyType,
     required this.isBasicSelected,
     required this.isStandardSelected,
@@ -69,6 +67,7 @@ class AskForScopeTab extends ConsumerStatefulWidget {
     required this.onServiceChanged,
     required this.onSubjectChanged,
     required this.onTagChanged,
+    required this.onUserChanged,
     required this.onBasicChanged,
     required this.onStandardChanged,
     required this.onAdvancedChanged,
@@ -79,15 +78,17 @@ class AskForScopeTab extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AskForScopeTab> createState() => _AskForScopeTabState();
+  ConsumerState<AskForFeasibilityTab> createState() =>
+      _AskForFeasibilityTabState();
 }
 
-class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
+class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
   @override
   Widget build(BuildContext context) {
     final serviceData = ref.watch(serviceDropdownProvider);
     final currencyData = ref.watch(currencyDropdownProvider);
     final tagData = ref.watch(tagsDropdownProvider);
+    final userData = ref.watch(filterUserDropdownProvider);
 
     return SingleChildScrollView(
       child: Column(
@@ -448,6 +449,30 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
               ],
             )
           ],
+          userData.when(
+            data: (userName) {
+              final userMap = {
+                for (var tag in userName)
+                  tag['fld_first_name'].toString(): tag['id'].toString(),
+              };
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  title('Select User to Assign'),
+                  CustomDropDown(
+                    dropdownWidth: MediaQuery.sizeOf(context).width,
+                    icon: Icons.account_circle_outlined,
+                    items: userMap.keys.toList(),
+                    title: 'Select User',
+                    onSelectionChanged: widget.onUserChanged,
+                  ),
+                ],
+              );
+            },
+            loading: () => const CircularProgressIndicator(),
+            error: (err, stack) => Text("Error: ${err.toString()}"),
+          ),
           tagData.when(
             data: (currencies) {
               final tagMap = {

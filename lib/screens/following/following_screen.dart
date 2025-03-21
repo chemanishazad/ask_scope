@@ -170,7 +170,14 @@ class _FollowingScreenState extends ConsumerState<FollowingScreen> {
                   child: _buildDetailRow(
                       Icons.monetization_on, "Currency", data["currency"]),
                 ),
-                Lottie.asset('assets/json/right.json', height: 20),
+                InkWell(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/detailsQuery', arguments: {
+                        'refId': data['ref_id'],
+                        'quoteId': data['id'],
+                      });
+                    },
+                    child: Lottie.asset('assets/json/right.json', height: 20)),
               ],
             ),
             const SizedBox(height: 5),

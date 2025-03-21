@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/provider/home/home_provider.dart';
 import 'package:loop/screens/home/details/widget/details_card.dart';
+import 'package:loop/screens/home/details/widget/feasibility_history.dart';
 import 'package:loop/screens/home/details/widget/query_history.dart';
 import 'package:loop/screens/home/details/widget/scope_details.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DetailsQuery extends ConsumerStatefulWidget {
   const DetailsQuery({super.key});
@@ -19,6 +22,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
   String? quoteId;
   Map<String, dynamic>? details;
   Map<String, dynamic>? history;
+  Map<String, dynamic>? feasibility;
   bool isLoading = true;
   String? errorMessage;
   late TabController _tabController;
@@ -45,9 +49,15 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
             'quoteId': args['quoteId'],
           }).future);
 
+          final feasibilityData = await ref.read(feasibilityHistoryProvider({
+            'refId': args['refId'],
+            'quoteId': args['quoteId'],
+          }).future);
+
           setState(() {
             details = fetchedDetails;
             history = historyData;
+            feasibility = feasibilityData;
             isLoading = false;
           });
         } catch (error) {
@@ -105,7 +115,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Scope Details',
                                       style: TextStyle(
                                         fontSize: 12,
@@ -116,7 +126,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                     const SizedBox(height: 8),
                                     ScopeDetailsCard(quote: quoteInfo[0]),
                                     const SizedBox(height: 12),
-                                    Text(
+                                    const Text(
                                       'History',
                                       style: TextStyle(
                                         fontSize: 11,
@@ -139,7 +149,41 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                           ),
 
                           const Center(child: Text("Communication Data")),
-                          const Center(child: Text("Feasibility Data")),
+                          SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Feasibility Comments'),
+                                Html(
+                                    data: quoteInfo[0]['feasability_comments']),
+                                Text(quoteInfo[0]['feasability_status']),
+                                Row(
+                                  children: [
+                                    const Text('Feasibility Attachment :'),
+                                    _buildFeasibilityAttachment(
+                                        quoteInfo[0]['feas_file_name']),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Feasibility History',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                feasibility == null ||
+                                        feasibility!['historyData'].isEmpty
+                                    ? const Center(
+                                        child: Text(
+                                            "No Feasibility history available"),
+                                      )
+                                    : FeasibilityHistory(history: feasibility),
+                              ],
+                            ),
+                          )
                         ],
                       ),
       ),
@@ -150,5 +194,43 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Widget _buildFeasibilityAttachment(String? fileUrl) {
+    if (fileUrl == null || fileUrl.isEmpty) {
+      return const Text("No Feasibility Attachment");
+    }
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () async {
+          final Uri url = Uri.parse(fileUrl);
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Could not open the file")),
+            );
+          }
+        },
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Icon(Icons.link, color: Colors.blue),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "View File",
+                style: TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

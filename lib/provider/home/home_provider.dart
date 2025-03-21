@@ -156,6 +156,31 @@ final quoteHistoryProvider =
     }
   },
 );
+final feasibilityHistoryProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
+  (ref, data) async {
+    final param = {
+      'ref_id': data['refId'],
+      'quote_id': data['quoteId'],
+    };
+    try {
+      final response = await ApiMaster().fire(
+        path: '/getFeasabilityHistory',
+        method: HttpMethod.$get,
+        queryParameters: param,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData;
+      } else {
+        throw Exception('Failed to fetch notifications');
+      }
+    } catch (e) {
+      throw Exception('Error: ${e.toString()}');
+    }
+  },
+);
 
 final currencyDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
   try {
@@ -197,6 +222,24 @@ final tagsDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
   try {
     Response response = await ApiMaster().fire(
       path: '/getAllTags',
+      method: HttpMethod.$get,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      return jsonData['data'];
+    } else {
+      throw Exception('Failed to fetch jobs');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final filterUserDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getExceptUsers',
       method: HttpMethod.$get,
     );
 
