@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/core/const/styles.dart';
+import 'package:number_to_words/number_to_words.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ScopeDetailsCard extends StatelessWidget {
   final Map<String, dynamic> quote;
@@ -36,9 +38,9 @@ class ScopeDetailsCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Description',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     Html(
@@ -48,8 +50,45 @@ class ScopeDetailsCard extends StatelessWidget {
                 ),
               ),
             _buildPriceDetails(),
+            if (quote['relevant_file'] is List)
+              _buildRelevantFilesSection(
+                  List<Map<String, dynamic>>.from(quote['relevant_file'])),
           ],
         ));
+  }
+
+  Widget _buildRelevantFilesSection(List<Map<String, dynamic>> files) {
+    if (files.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Relevant Files',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        ...files.map((file) => InkWell(
+              onTap: () async {
+                final uri = Uri.parse(file['file_path']);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  debugPrint('Could not launch ${file['file_path']}');
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  file['filename'] ?? 'Unknown File',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            )),
+      ],
+    );
   }
 
   Widget _buildPriceDetails() {
@@ -146,166 +185,99 @@ class ScopeDetailsCard extends StatelessWidget {
 
     try {
       planData = Map<String, dynamic>.from(jsonDecode(planJson));
-      wordCounts = wordCountJson != null && wordCountJson.isNotEmpty
-          ? Map<String, dynamic>.from(jsonDecode(wordCountJson))
-          : {};
+
+      if (wordCountJson != null && wordCountJson.isNotEmpty) {
+        Map<String, dynamic> tempWordCounts =
+            Map<String, dynamic>.from(jsonDecode(wordCountJson));
+
+        // Convert all values to integers safely
+        wordCounts = tempWordCounts.map((key, value) {
+          if (value == null || value == "null") {
+            return MapEntry(key, null); // Handle nulls
+          }
+          if (value is String && int.tryParse(value) != null) {
+            return MapEntry(key, int.parse(value)); // Convert string to int
+          }
+          if (value is int) {
+            return MapEntry(key, value);
+          }
+          return MapEntry(key, null); // Fallback if type is unexpected
+        });
+      }
     } catch (e) {
-      return Text(
-        "Invalid plan description format",
-        style: const TextStyle(color: Colors.red),
-      );
+      print("JSON Parsing Error: ${e.toString()}");
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Plan Description',
-          style: const TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: planData.entries.map((entry) {
-            String planName = entry.key;
-            String description = entry.value;
-            String wordCountStr = wordCounts[planName]?.toString() ?? "N/A";
+      children: planData.entries.map((entry) {
+        String planName = entry.key;
+        String description = entry.value;
+        int? wordCount = wordCounts[planName];
 
-            // Ensure word count is a valid number
-            int? wordCount = int.tryParse(wordCountStr);
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                planName,
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    planName,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
+              Html(data: description),
+              if (wordCount != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.lightBlue.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.green.shade300),
                   ),
-                  Html(data: description),
-                  if (wordCount != null) // Show only if valid number
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.lightBlue.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.green.shade300),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Word Counts:",
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Word Counts:",
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87),
-                          ),
-                          const SizedBox(height: 4),
-                          RichText(
-                            text: TextSpan(
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.black87),
-                              children: [
-                                const TextSpan(
-                                    text: "Standard: ",
-                                    style: TextStyle(color: Colors.blue)),
-                                TextSpan(
-                                  text: "$wordCount words",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            convertNumberToWords(wordCount),
-                            style:
-                                TextStyle(fontSize: 11, color: Colors.black87),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      Text(
+                        "$planName: $wordCount words",
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green),
                       ),
-                    ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+                      const SizedBox(height: 2),
+                      Text(
+                        convertLargeNumberToWords(wordCount),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
-  String convertNumberToWords(int number) {
-    if (number == 0) return "Zero words";
-
-    List<String> units = [
-      "",
-      "One",
-      "Two",
-      "Three",
-      "Four",
-      "Five",
-      "Six",
-      "Seven",
-      "Eight",
-      "Nine"
-    ];
-    List<String> teens = [
-      "Ten",
-      "Eleven",
-      "Twelve",
-      "Thirteen",
-      "Fourteen",
-      "Fifteen",
-      "Sixteen",
-      "Seventeen",
-      "Eighteen",
-      "Nineteen"
-    ];
-    List<String> tens = [
-      "",
-      "",
-      "Twenty",
-      "Thirty",
-      "Forty",
-      "Fifty",
-      "Sixty",
-      "Seventy",
-      "Eighty",
-      "Ninety"
-    ];
-
-    String words = "";
-
-    if (number >= 100) {
-      words += "${units[number ~/ 100]} Hundred ";
-      number %= 100;
-    }
-
-    if (number >= 10 && number < 20) {
-      words += teens[number - 10];
-    } else {
-      if (number >= 20) {
-        words += tens[number ~/ 10];
-        number %= 10;
-        if (number > 0) words += " ";
-      }
-      if (number > 0) words += units[number];
-    }
-
-    return "$words words";
+  String convertLargeNumberToWords(int number) {
+    return NumberToWord().convert('en-in', number).replaceAll("-", " ");
   }
 
   Widget _buildTagRow(String title, String? tags) {

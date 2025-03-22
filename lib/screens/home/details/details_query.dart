@@ -126,15 +126,6 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                     const SizedBox(height: 8),
                                     ScopeDetailsCard(quote: quoteInfo[0]),
                                     const SizedBox(height: 12),
-                                    const Text(
-                                      'History',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
                                     history == null ||
                                             history!['historyData'].isEmpty
                                         ? const Center(
@@ -155,8 +146,20 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                               children: [
                                 const Text('Feasibility Comments'),
                                 Html(
-                                    data: quoteInfo[0]['feasability_comments']),
-                                Text(quoteInfo[0]['feasability_status']),
+                                  data: quoteInfo.isNotEmpty &&
+                                          quoteInfo[0]
+                                                  ['feasability_comments'] !=
+                                              null
+                                      ? quoteInfo[0]['feasability_comments']
+                                      : "<p>No feasibility comments available.</p>",
+                                ),
+                                Text(
+                                  quoteInfo.isNotEmpty &&
+                                          quoteInfo[0]['feasability_status'] !=
+                                              null
+                                      ? quoteInfo[0]['feasability_status']
+                                      : "No status available",
+                                ),
                                 Row(
                                   children: [
                                     const Text('Feasibility Attachment :'),
@@ -165,17 +168,19 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                const Text(
-                                  'Feasibility History',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                                if (feasibility == null ||
+                                    feasibility!['historyData'] != null)
+                                  const Text(
+                                    'Feasibility History',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
                                   ),
-                                ),
                                 const SizedBox(height: 8),
                                 feasibility == null ||
-                                        feasibility!['historyData'].isEmpty
+                                        feasibility!['historyData'] != null
                                     ? const Center(
                                         child: Text(
                                             "No Feasibility history available"),

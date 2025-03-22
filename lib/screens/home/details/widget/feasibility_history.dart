@@ -11,12 +11,14 @@ class FeasibilityHistory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<dynamic> historyData = history?['historyData'] ?? [];
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: history!['historyData'].length,
+      itemCount: historyData.length,
       itemBuilder: (context, index) {
-        final historyItem = history!['historyData'][index];
+        final historyItem = historyData[index];
         final String firstName = historyItem['from_first_name'] ?? '';
         final String lastName = historyItem['from_last_name'] ?? '';
         final String fullName = (firstName + " " + lastName).trim();

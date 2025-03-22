@@ -121,8 +121,14 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                     const SizedBox(width: 5),
                     InkWell(
                         onTap: () {
+                          print(data);
                           Navigator.pushNamed(context, '/detailsQuery',
-                              arguments: data['ref_id']);
+                              arguments: {
+                                'refId': data['ref_id'],
+                                'quoteId': data['id'],
+                              });
+                          // Navigator.pushNamed(context, '/detailsQuery',
+                          //     arguments: data['ref_id']);
                         },
                         child:
                             Lottie.asset('assets/json/right.json', height: 25)),
@@ -141,12 +147,12 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  Icon(Icons.videocam, size: 20),
+                  const Icon(Icons.videocam, size: 20),
                   const SizedBox(width: 10),
-                  SizedBox(
+                  const SizedBox(
                       width: 100,
                       child: Text("RC Demo",
-                          style: const TextStyle(fontWeight: FontWeight.bold))),
+                          style: TextStyle(fontWeight: FontWeight.bold))),
                   Expanded(
                     child: Text(data["rc_demo_status"],
                         style: TextStyle(

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loop/core/const/palette.dart';
+import 'package:loop/model/home/scope_upload_model.dart';
+import 'package:loop/provider/home/scope_upload_provider.dart';
 import 'package:loop/screens/home/details/addScope/ask_new_feasibility.dart';
 import 'package:loop/screens/home/details/addScope/ask_scope_tab.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
@@ -43,6 +45,9 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   String _basicWordCountText = "";
   String _standardWordCountText = "";
   String _advancedWordCountText = "";
+  String _basicWordCount = "";
+  String _standardWordCount = "";
+  String _advancedWordCount = "";
   List<File> _selectedFiles = [];
 
   Future<void> _pickFile() async {
@@ -101,6 +106,8 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     });
   }
 
+  String? id;
+  String? name;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -108,14 +115,17 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
-      print('Client Name: ${args['clientName']}');
-      print('Ref ID: ${args['refId']}');
+      setState(() {
+        id = args['refId'];
+        name = args['clientName'];
+      });
     }
   }
 
   void _updateBasicWordCountText() {
     setState(() {
       int? count = int.tryParse(_basicWordCountController.text);
+      _basicWordCount = count.toString();
       _basicWordCountText =
           (count != null) ? NumberToWord().convert('en-in', count) : "";
     });
@@ -124,6 +134,7 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   void _updateStandardWordCountText() {
     setState(() {
       int? count = int.tryParse(_standardWordCountController.text);
+      _standardWordCount = count.toString();
       _standardWordCountText = (count != null)
           ? NumberToWord().convert('en-in', count) // Converts number to words
           : "";
@@ -133,12 +144,17 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   void _updateAdvancedWordCountText() {
     setState(() {
       int? count = int.tryParse(_advancedWordCountController.text);
+      _advancedWordCount = count.toString();
       _advancedWordCountText = (count != null)
           ? NumberToWord().convert('en-in', count) // Converts number to words
           : "";
     });
   }
 
+  String basicPlanText = '';
+  String standardPlanText = '';
+  String advancedPlanText = '';
+  String commentText = '';
   @override
   void dispose() {
     _basicWordCountController.removeListener(_updateBasicWordCountText);
@@ -173,20 +189,77 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
       return;
     }
 
-    // Print selected values
-    print("Selected Currency ID: $selectedCurrencyId");
-    print("Selected Service ID: $selectedServiceId");
-    print("Selected Subject ID: $selectedSubjectId");
-    print("Selected Tag ID: $selectedTagId");
-    print("Selected custom currency ID: $customCurrencyType");
-    print("Selected custom Subject ID: $customSubjectType");
+    // Fetch content only for selected plans
+    try {
+      if (isBasicSelected) {
+        basicPlanText = await _basicController.getText();
+      } else {
+        basicPlanText = ""; // Set to empty if not selected
+      }
 
-    print("Basic Plan Selected: $isBasicSelected");
-    print("Standard Plan Selected: $isStandardSelected");
-    print("Advanced Plan Selected: $isAdvancedSelected");
+      if (isStandardSelected) {
+        standardPlanText = await _standardController.getText();
+      } else {
+        standardPlanText = ""; // Set to empty if not selected
+      }
 
-    // Show success message
-    _showSuccess("Form submitted successfully!");
+      if (isAdvancedSelected) {
+        advancedPlanText = await _advancedController.getText();
+      } else {
+        advancedPlanText = ""; // Set to empty if not selected
+      }
+
+      commentText = await _commentController.getText();
+    } catch (e) {
+      _showError("Failed to get editor content. Please try again.");
+      return;
+    }
+
+    try {
+      List<String> selectedPlans = [];
+      if (isBasicSelected) selectedPlans.add("Basic");
+      if (isStandardSelected) selectedPlans.add("Standard");
+      if (isAdvancedSelected) selectedPlans.add("Advanced");
+      String selectedPlansString = selectedPlans.join(",");
+
+      ScopeUploadModel scopeUploadModel = ScopeUploadModel(
+        refId: id ?? '',
+        clientName: name ?? '',
+        currency: selectedCurrencyId ?? '',
+        otherCurrency: customCurrencyType ?? '',
+        serviceName: selectedServiceId ?? '',
+        subjectArea: selectedSubjectId ?? '',
+        otherSubjectArea: customSubjectType ?? '',
+        tags: selectedTagId ?? '',
+        plan: selectedPlansString,
+        planWordCountBasic: isBasicSelected ? _basicWordCount : "",
+        planWordCountStandard: isStandardSelected ? _standardWordCount : "",
+        planWordCountAdvanced: isAdvancedSelected ? _advancedWordCount : "",
+        planCommentsBasic: isBasicSelected ? basicPlanText : "",
+        planCommentsStandard: isStandardSelected ? standardPlanText : "",
+        planCommentsAdvanced: isAdvancedSelected ? advancedPlanText : "",
+        comments: commentText,
+        feasibility: selectedUserId?.isNotEmpty == true ? '1' : '0',
+        feasabilityUser: selectedUserId ?? '',
+        demoDone: 'no',
+        demoId: '',
+        picture: _selectedFiles,
+      );
+
+      final response =
+          await ref.read(addNewScopeProvider(scopeUploadModel).future);
+      print(response);
+      if (response['status'] == true) {
+        _showSuccess("Form submitted successfully!");
+        Navigator.pop(context);
+        Navigator.pop(context);
+      } else {
+        _showError("Failed to submit form. Please try again.");
+      }
+    } catch (e) {
+      _showError("Failed to submit form. Please try again.");
+      print("Error: $e");
+    }
   }
 
   void _showError(String message) {
