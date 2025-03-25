@@ -33,7 +33,12 @@ class _CustomDropDownState extends State<CustomDropDown> {
   @override
   void initState() {
     super.initState();
-    _selectedItem = widget.initialValue;
+    if (widget.initialValue != null &&
+        widget.items.contains(widget.initialValue)) {
+      _selectedItem = widget.initialValue;
+    } else {
+      _selectedItem = null;
+    }
   }
 
   @override

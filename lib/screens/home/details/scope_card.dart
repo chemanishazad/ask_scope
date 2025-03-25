@@ -16,34 +16,44 @@ class _ScopeCardState extends ConsumerState<ScopeCard> {
   List<Map<String, dynamic>> quotes = [];
   bool isLoading = true;
   String? errorMessage;
+  String? refId;
 
   @override
   void initState() {
     super.initState();
+  }
 
-    Future.microtask(() async {
-      final args = ModalRoute.of(context)?.settings.arguments as String?;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as String?;
+    if (refId != args) {
+      refId = args;
+      _fetchData();
+    }
+  }
 
-      if (args != null) {
-        try {
-          final fetchedDetails = await ref.read(queryDetailsProvider({
-            'refId': args,
-            'quoteId': '',
-          }).future);
+  Future<void> _fetchData() async {
+    if (refId != null) {
+      setState(() => isLoading = true);
+      try {
+        final fetchedDetails = await ref.read(queryDetailsProvider({
+          'refId': refId!,
+          'quoteId': '',
+        }).future);
 
-          setState(() {
-            quotes = List<Map<String, dynamic>>.from(
-                fetchedDetails['quoteInfo'] ?? []);
-            isLoading = false;
-          });
-        } catch (error) {
-          setState(() {
-            errorMessage = error.toString();
-            isLoading = false;
-          });
-        }
+        setState(() {
+          quotes = List<Map<String, dynamic>>.from(
+              fetchedDetails['quoteInfo'] ?? []);
+          isLoading = false;
+        });
+      } catch (error) {
+        setState(() {
+          errorMessage = error.toString();
+          isLoading = false;
+        });
       }
-    });
+    }
   }
 
   @override
@@ -71,7 +81,7 @@ class _ScopeCardState extends ConsumerState<ScopeCard> {
                   itemCount: quotes.length,
                   itemBuilder: (context, index) {
                     final quote = quotes[index];
-                    return QuoteCard(quote: quote);
+                    return QuoteCard(quote: quote, onUpdate: _fetchData);
                   },
                 ),
     );
@@ -80,8 +90,9 @@ class _ScopeCardState extends ConsumerState<ScopeCard> {
 
 class QuoteCard extends StatelessWidget {
   final Map<String, dynamic> quote;
+  final VoidCallback onUpdate;
 
-  const QuoteCard({super.key, required this.quote});
+  const QuoteCard({super.key, required this.quote, required this.onUpdate});
 
   @override
   Widget build(BuildContext context) {
@@ -151,10 +162,30 @@ class QuoteCard extends StatelessWidget {
                 Navigator.pushNamed(context, '/detailsQuery', arguments: {
                   'refId': quote['assign_id'],
                   'quoteId': quote['quoteid'],
-                });
+                }).then((_) => onUpdate());
               }),
-              _buildActionButton(Icons.tag, () {}),
-              _buildActionButton(Icons.manage_accounts_outlined, () {}),
+              _buildActionButton(Icons.edit, () {
+                Navigator.pushNamed(context, '/editScopeScreen',
+                        arguments: quote)
+                    .then((_) => onUpdate());
+              }),
+              _buildActionButton(Icons.tag, () {
+                // print(quote);
+
+                Navigator.pushNamed(context, '/updateTagScreen', arguments: {
+                  'refId': quote['assign_id'],
+                  'tags': quote['tags'],
+                  'quoteId': quote['quoteid'],
+                }).then((_) => onUpdate());
+              }),
+              _buildActionButton(Icons.manage_accounts_outlined, () {
+                Navigator.pushNamed(context, '/updateFollowerScreen',
+                    arguments: {
+                      'refId': quote['assign_id'],
+                      'followers': quote['followers'],
+                      'quoteId': quote['quoteid'],
+                    }).then((_) => onUpdate());
+              }),
               _buildActionButton(Icons.share, () {}),
             ],
           ),

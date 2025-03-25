@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:loop/screens/auth/login/login_screen.dart';
 import 'package:loop/screens/auth/splash/splash_screen.dart';
 import 'package:loop/screens/bottomNavigation/bottom_navigation.dart';
+import 'package:loop/screens/home/addon/edit_scope_screen.dart';
+import 'package:loop/screens/home/addon/update_followers_screen.dart';
+import 'package:loop/screens/home/addon/update_tag_screen.dart';
 import 'package:loop/screens/home/details/addScope/add_new_scope.dart';
 import 'package:loop/screens/home/details/details_query.dart';
 import 'package:loop/screens/home/details/scope_card.dart';
@@ -16,5 +19,8 @@ class AppRoutes {
     '/detailsQuery': (context) => const DetailsQuery(),
     '/scopeCard': (context) => const ScopeCard(),
     '/addNewScope': (context) => const AddNewScope(),
+    '/updateTagScreen': (context) => const UpdateTagScreen(),
+    '/updateFollowerScreen': (context) => const UpdateFollowerScreen(),
+    '/editScopeScreen': (context) => const EditScopeScreen(),
   };
 }

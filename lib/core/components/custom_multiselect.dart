@@ -57,7 +57,8 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
     if (selectedValues != null) {
       setState(() {
         _selectedNames = selectedValues;
-        _selectedIds = selectedValues.map((name) => widget.items[name]!).toList();
+        _selectedIds =
+            selectedValues.map((name) => widget.items[name]!).toList();
       });
 
       if (widget.onSelectionChanged != null) {
@@ -68,9 +69,8 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
 
   @override
   Widget build(BuildContext context) {
-    String selectedText = _selectedNames.isEmpty
-        ? widget.title
-        : _selectedNames.join(', ');
+    String selectedText =
+        _selectedNames.isEmpty ? widget.title : _selectedNames.join(', ');
 
     return GestureDetector(
       onTap: _showMultiSelectDialog,
@@ -111,7 +111,8 @@ class MultiSelectDialog extends StatefulWidget {
   final Map<String, String> items;
   final List<String> selectedItems;
 
-  const MultiSelectDialog({super.key, required this.items, required this.selectedItems});
+  const MultiSelectDialog(
+      {super.key, required this.items, required this.selectedItems});
 
   @override
   State<MultiSelectDialog> createState() => _MultiSelectDialogState();

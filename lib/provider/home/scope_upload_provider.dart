@@ -63,3 +63,56 @@ final addNewScopeProvider =
     throw Exception('Error: ${e.toString()}');
   }
 });
+
+final tagUpdateProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/updateTags',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['refId'],
+        'quote_id': params['quoteId'],
+        'tags': params['tags'],
+        'notification': params['notification'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final followerUpdateProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/updateFollowers',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['refId'],
+        'quote_id': params['quoteId'],
+        'followers': params['followers'],
+        'notification': params['notification'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
