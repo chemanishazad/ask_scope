@@ -164,11 +164,12 @@ class QuoteCard extends StatelessWidget {
                   'quoteId': quote['quoteid'],
                 }).then((_) => onUpdate());
               }),
-              _buildActionButton(Icons.edit, () {
-                Navigator.pushNamed(context, '/editScopeScreen',
-                        arguments: quote)
-                    .then((_) => onUpdate());
-              }),
+              if (quote['status_value'] == '0')
+                _buildActionButton(Icons.edit, () {
+                  Navigator.pushNamed(context, '/editScopeScreen',
+                          arguments: quote)
+                      .then((_) => onUpdate());
+                }),
               _buildActionButton(Icons.tag, () {
                 // print(quote);
 
@@ -186,7 +187,7 @@ class QuoteCard extends StatelessWidget {
                       'quoteId': quote['quoteid'],
                     }).then((_) => onUpdate());
               }),
-              _buildActionButton(Icons.share, () {}),
+              // _buildActionButton(Icons.share, () {}),
             ],
           ),
         ],

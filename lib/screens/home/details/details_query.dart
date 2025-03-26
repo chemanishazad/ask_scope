@@ -110,7 +110,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                DetailsCard(quote: quoteInfo[0]),
+                                // DetailsCard(quote: quoteInfo[0]),
                                 const SizedBox(height: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

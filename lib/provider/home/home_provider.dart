@@ -254,3 +254,21 @@ final filterUserDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
     throw Exception('Error: ${e.toString()}');
   }
 });
+final feasibilityDataProvider = FutureProvider<List<dynamic>>((ref) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getAllFeasabilityAssignedToUser',
+      method: HttpMethod.$get,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      return jsonData['data'];
+    } else {
+      throw Exception('Failed to fetch jobs');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});

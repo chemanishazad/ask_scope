@@ -39,6 +39,7 @@ class AskForScopeTab extends ConsumerStatefulWidget {
   final Function(bool?) onStandardChanged;
   final Function(bool?) onAdvancedChanged;
   final Function(String?) onCustomCurrencyChanged;
+  final Function(String?) onCustomSubjectChanged;
   final Function() onPickFile;
   final Function(int) onRemoveFile;
   final Function() onSubmit;
@@ -73,6 +74,7 @@ class AskForScopeTab extends ConsumerStatefulWidget {
     required this.onStandardChanged,
     required this.onAdvancedChanged,
     required this.onCustomCurrencyChanged,
+    required this.onCustomSubjectChanged,
     required this.onPickFile,
     required this.onRemoveFile,
     required this.onSubmit,

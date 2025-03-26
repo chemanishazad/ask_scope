@@ -373,6 +373,11 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                         customCurrencyType = value;
                       });
                     },
+                    onCustomSubjectChanged: (value) {
+                      setState(() {
+                        customSubjectType = value;
+                      });
+                    },
                     onPickFile: _pickFile,
                     onRemoveFile: _removeFile,
                     onSubmit: _submitForm,
@@ -383,6 +388,7 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                     selectedSubjectId: selectedSubjectId,
                     selectedTagId: selectedTagId,
                     customCurrencyType: customCurrencyType,
+                    customSubjectType: customSubjectType,
                     isBasicSelected: isBasicSelected,
                     isStandardSelected: isStandardSelected,
                     isAdvancedSelected: isAdvancedSelected,
@@ -406,7 +412,6 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                       setState(() {
                         selectedServiceId = selectedName;
                       });
-                      print(selectedServiceId);
                     },
                     onSubjectChanged: (selectedName) {
                       setState(() {
@@ -417,6 +422,7 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                       setState(() {
                         selectedUserId = selectedName;
                       });
+                      print(selectedUserId);
                     },
                     onTagChanged: (selectedName) {
                       setState(() {
@@ -441,6 +447,11 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
                     onCustomCurrencyChanged: (value) {
                       setState(() {
                         customCurrencyType = value;
+                      });
+                    },
+                    onCustomSubjectChanged: (value) {
+                      setState(() {
+                        customSubjectType = value;
                       });
                     },
                     onPickFile: _pickFile,

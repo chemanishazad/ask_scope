@@ -12,6 +12,8 @@ class EditScopeModel extends ConsumerStatefulWidget {
   final String? selectedServiceId;
   final String? selectedSubjectId;
   final String? customCurrencyType;
+  final String? customSubjectType;
+  final String? feasibilityUser;
   final bool isBasicSelected;
   final bool isStandardSelected;
   final bool isAdvancedSelected;
@@ -25,6 +27,7 @@ class EditScopeModel extends ConsumerStatefulWidget {
   final String basicWordCountText;
   final String standardWordCountText;
   final String advancedWordCountText;
+  final String? isFeasibility;
   final Function(String?) onCurrencyChanged;
   final Function(String?) onServiceChanged;
   final Function(String?) onSubjectChanged;
@@ -34,6 +37,7 @@ class EditScopeModel extends ConsumerStatefulWidget {
   final Function(bool?) onStandardChanged;
   final Function(bool?) onAdvancedChanged;
   final Function(String?) onCustomCurrencyChanged;
+  final Function(String?) onCustomSubjectChanged;
   final Function() onSubmit;
 
   const EditScopeModel({
@@ -42,6 +46,7 @@ class EditScopeModel extends ConsumerStatefulWidget {
     required this.selectedServiceId,
     required this.selectedSubjectId,
     required this.customCurrencyType,
+    required this.customSubjectType,
     required this.isBasicSelected,
     required this.isStandardSelected,
     required this.isAdvancedSelected,
@@ -64,7 +69,10 @@ class EditScopeModel extends ConsumerStatefulWidget {
     required this.onStandardChanged,
     required this.onAdvancedChanged,
     required this.onCustomCurrencyChanged,
+    required this.onCustomSubjectChanged,
     required this.onSubmit,
+    required this.isFeasibility,
+    required this.feasibilityUser,
   });
 
   @override
@@ -76,6 +84,7 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
   Widget build(BuildContext context) {
     final serviceData = ref.watch(serviceDropdownProvider);
     final currencyData = ref.watch(currencyDropdownProvider);
+    final userData = ref.watch(filterUserDropdownProvider);
 
     return SingleChildScrollView(
       child: Column(
@@ -101,7 +110,12 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
                         icon: Icons.currency_rupee_rounded,
                         items: currencyMap.keys.toList(),
                         title: 'Select Currency',
-                        onSelectionChanged: widget.onCurrencyChanged,
+                        onSelectionChanged: (value) {
+                          widget.onCurrencyChanged(value);
+                          if (value != 'Other') {
+                            widget.onCustomCurrencyChanged('');
+                          }
+                        },
                       ),
                     ],
                   );
@@ -141,7 +155,8 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
               ),
             ],
           ),
-          if (widget.selectedCurrencyId == 'Other')
+          if (widget.selectedCurrencyId == 'Other' &&
+              (widget.customCurrencyType?.isNotEmpty ?? false))
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -152,7 +167,7 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
                   height: 40,
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: "Enter currency",
+                      hintText: widget.customCurrencyType ?? "Enter Currency",
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 4),
@@ -200,7 +215,7 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
                       height: 40,
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: "Enter Subject",
+                          hintText: widget.customSubjectType ?? "Enter Subject",
                           filled: true,
                           fillColor: Colors.white,
                           contentPadding:
@@ -217,7 +232,7 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
                                 color: Colors.grey, width: 1.5),
                           ),
                         ),
-                        onChanged: widget.onCustomCurrencyChanged,
+                        onChanged: widget.onCustomSubjectChanged,
                       ),
                     ),
                   ],
@@ -441,13 +456,66 @@ class _EditScopeModelState extends ConsumerState<EditScopeModel> {
               ],
             )
           ],
+          const SizedBox(width: 8),
+          if (widget.isFeasibility == '1')
+            userData.when(
+              data: (userName) {
+                // Create a map of user names to IDs
+                final Map<String, String> userMap = {
+                  for (var user in userName)
+                    '${user['fld_first_name']} ${user['fld_last_name']}':
+                        user['id'].toString(),
+                };
+
+                // Create reverse map (ID to name) for initialization
+                final Map<String, String> reverseUserMap = {
+                  for (var user in userName)
+                    user['id'].toString():
+                        '${user['fld_first_name']} ${user['fld_last_name']}',
+                };
+
+                // Debug prints to verify data
+                debugPrint('User Map: $userMap');
+                debugPrint('Reverse User Map: $reverseUserMap');
+                debugPrint(
+                    'Current feasibilityUser: ${widget.feasibilityUser}');
+
+                // Get the initial name for the current ID
+                String? initialName;
+                if (widget.feasibilityUser != null &&
+                    widget.feasibilityUser!.isNotEmpty) {
+                  initialName = reverseUserMap[widget.feasibilityUser!];
+                  debugPrint(
+                      'Found initial name: $initialName for ID ${widget.feasibilityUser}');
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title('Select User to Assign'),
+                    CustomDropDown(
+                      initialValue: initialName,
+                      dropdownWidth: MediaQuery.sizeOf(context).width,
+                      icon: Icons.account_circle_outlined,
+                      items: userMap.keys.toList(),
+                      onSelectionChanged: (selectedName) {
+                        final selectedId = userMap[selectedName];
+                        debugPrint('Selected: $selectedName (ID: $selectedId)');
+                        widget.onUserChanged(selectedId);
+                      },
+                    ),
+                  ],
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (err, stack) => Text("Error: ${err.toString()}"),
+            ),
           const Text(
             "Additional Comments (optional)",
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           HtmlEditor(
-            
             controller: widget.commentController,
             htmlEditorOptions: const HtmlEditorOptions(
               hint: "Additional Comments",

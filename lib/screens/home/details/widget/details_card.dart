@@ -134,7 +134,7 @@ class ActionButtonRow extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(IconData icon) {
+  Widget _buildActionButton(IconData icon ) {
     return IconButton(
       onPressed: () {},
       icon: Icon(icon, size: 22, color: Palette.themeColor),

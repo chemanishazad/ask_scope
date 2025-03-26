@@ -15,6 +15,7 @@ class AskForFeasibilityTab extends ConsumerStatefulWidget {
   final String? selectedSubjectId;
   final String? selectedTagId;
   final String? customCurrencyType;
+  final String? customSubjectType;
   final bool isBasicSelected;
   final bool isStandardSelected;
   final bool isAdvancedSelected;
@@ -38,6 +39,7 @@ class AskForFeasibilityTab extends ConsumerStatefulWidget {
   final Function(bool?) onStandardChanged;
   final Function(bool?) onAdvancedChanged;
   final Function(String?) onCustomCurrencyChanged;
+  final Function(String?) onCustomSubjectChanged;
   final Function() onPickFile;
   final Function(int) onRemoveFile;
   final Function() onSubmit;
@@ -49,6 +51,7 @@ class AskForFeasibilityTab extends ConsumerStatefulWidget {
     required this.selectedSubjectId,
     required this.selectedTagId,
     required this.customCurrencyType,
+    required this.customSubjectType,
     required this.isBasicSelected,
     required this.isStandardSelected,
     required this.isAdvancedSelected,
@@ -72,6 +75,7 @@ class AskForFeasibilityTab extends ConsumerStatefulWidget {
     required this.onStandardChanged,
     required this.onAdvancedChanged,
     required this.onCustomCurrencyChanged,
+    required this.onCustomSubjectChanged,
     required this.onPickFile,
     required this.onRemoveFile,
     required this.onSubmit,
@@ -161,7 +165,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                   height: 40,
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: "Enter currency",
+                      hintText: widget.customCurrencyType ?? "Enter currency",
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 4),
@@ -207,8 +211,9 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                       width: MediaQuery.of(context).size.width / 2.2,
                       height: 40,
                       child: TextField(
+                        
                         decoration: InputDecoration(
-                          hintText: "Enter Subject",
+                          hintText: widget.customSubjectType ?? "Enter Subject",
                           filled: true,
                           fillColor: Colors.white,
                           contentPadding:
@@ -225,7 +230,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                                 color: Colors.grey, width: 1.5),
                           ),
                         ),
-                        onChanged: widget.onCustomCurrencyChanged,
+                        onChanged: widget.onCustomSubjectChanged,
                       ),
                     ),
                   ],
@@ -453,7 +458,8 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
             data: (userName) {
               final userMap = {
                 for (var tag in userName)
-                  tag['fld_first_name'].toString(): tag['id'].toString(),
+                  tag['fld_first_name'].toString() +
+                      tag['fld_last_name'].toString(): tag['id'].toString(),
               };
 
               return Column(
@@ -465,7 +471,10 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                     icon: Icons.account_circle_outlined,
                     items: userMap.keys.toList(),
                     title: 'Select User',
-                    onSelectionChanged: widget.onUserChanged,
+                    onSelectionChanged: (selectedName) {
+                      final selectedId = userMap[selectedName];
+                      widget.onUserChanged(selectedId);
+                    },
                   ),
                 ],
               );
