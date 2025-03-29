@@ -66,7 +66,7 @@ class DetailsCard extends StatelessWidget {
           InfoRow(
               icon: Icons.pending,
               label: "Quote Status:",
-              value: quote['status']),
+              value: quote['quote_status']),
           const Divider(),
           const ActionButtonRow(),
         ],
@@ -106,10 +106,9 @@ class InfoRow extends StatelessWidget {
             child: Text(
               value ?? 'N/A',
               style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: Colors.black54,
                   fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -134,7 +133,7 @@ class ActionButtonRow extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(IconData icon ) {
+  Widget _buildActionButton(IconData icon) {
     return IconButton(
       onPressed: () {},
       icon: Icon(icon, size: 22, color: Palette.themeColor),

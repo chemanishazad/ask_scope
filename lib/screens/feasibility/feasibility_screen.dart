@@ -15,6 +15,12 @@ class FeasibilityScreen extends ConsumerStatefulWidget {
 
 class _FeasibilityScreenState extends ConsumerState<FeasibilityScreen> {
   @override
+  void didChangeDependencies() {
+    ref.invalidate(feasibilityDataProvider);
+    super.didChangeDependencies();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final feasibilityData = ref.watch(feasibilityDataProvider);
 
@@ -28,8 +34,9 @@ class _FeasibilityScreenState extends ConsumerState<FeasibilityScreen> {
       ),
       body: feasibilityData.when(
         data: (data) {
-          final items = data;
-          if (items.isEmpty) {
+          final items = data['data'];
+
+          if (data['status'] == false) {
             return const Center(
               child: Text(
                 'No feasibility data available.',
@@ -89,7 +96,17 @@ class _FeasibilityScreenState extends ConsumerState<FeasibilityScreen> {
                   ],
                 ),
               ),
-              Lottie.asset('assets/json/right.json', height: 30)
+              InkWell(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/feasibilityDetails',
+                            arguments: item)
+                        .then(
+                      (value) {
+                        ref.refresh(feasibilityDataProvider);
+                      },
+                    );
+                  },
+                  child: Lottie.asset('assets/json/right.json', height: 30))
             ],
           ),
 

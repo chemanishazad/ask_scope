@@ -6,6 +6,7 @@ import 'package:http/http.dart';
 import 'package:loop/core/utils/service.dart';
 import 'package:loop/model/home/edit_scope_model.dart';
 import 'package:loop/model/home/scope_upload_model.dart';
+import 'package:loop/provider/home/complete_feasibility_model.dart';
 
 final addNewScopeProvider =
     FutureProvider.family<Map<String, dynamic>, ScopeUploadModel>(
@@ -154,6 +155,37 @@ final followerUpdateProvider =
       return data;
     } else {
       return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final completeFeasibilityProvider =
+    FutureProvider.family<Map<String, dynamic>, CompleteFeasibilityModel>(
+        (ref, params) async {
+  try {
+    final fields = {
+      'ref_id': params.refId,
+      'quote_id': params.quoteId,
+      'feasability_comments': params.feasibilityComments,
+      'ref_user_id': params.userId,
+    };
+
+    final List<String> fileFieldNames = ['file'];
+    Response response = await ApiMaster().fire(
+      path: '/completeFeasabilityNew',
+      method: HttpMethod.$formdata,
+      fileFieldNames: fileFieldNames,
+      multipartFields: fields,
+      files: params.file,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('data${data}');
+      return data;
+    } else {
+      return {'status': false, 'message': 'Failed to fetch skills'};
     }
   } catch (e) {
     throw Exception('Error: ${e.toString()}');

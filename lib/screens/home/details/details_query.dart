@@ -55,6 +55,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
           }).future);
 
           setState(() {
+            refId = args['refId'];
             details = fetchedDetails;
             history = historyData;
             feasibility = feasibilityData;

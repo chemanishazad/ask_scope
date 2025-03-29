@@ -131,6 +131,17 @@ class QuoteCard extends StatelessWidget {
                       Fluttertoast.showToast(msg: 'This data already edited');
                     },
                     icon: const Icon(Icons.edit)),
+              if (quote['callrecordingpending'] == '1')
+                Padding(
+                  padding: EdgeInsets.only(left: 8.0),
+                  child: IconButton(
+                    icon: Icon(Icons.headphones),
+                    onPressed: () {
+                      Fluttertoast.showToast(
+                          msg: 'This data already Call Recording Marked');
+                    },
+                  ),
+                ),
               if (quote['ownership_transferred'] == '1')
                 IconButton(
                     onPressed: () {
@@ -153,7 +164,7 @@ class QuoteCard extends StatelessWidget {
           InfoRow(
               icon: Icons.pending,
               label: "Quote Status:",
-              value: quote['status']),
+              value: quote['quote_status']),
           const Divider(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -236,7 +247,6 @@ class InfoRow extends StatelessWidget {
                   fontSize: 11,
                   color: Colors.black54,
                   fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:loop/screens/auth/login/login_screen.dart';
 import 'package:loop/screens/auth/splash/splash_screen.dart';
 import 'package:loop/screens/bottomNavigation/bottom_navigation.dart';
+import 'package:loop/screens/feasibility/feasibility_details_screen.dart';
 import 'package:loop/screens/home/addon/edit_scope_screen.dart';
 import 'package:loop/screens/home/addon/update_followers_screen.dart';
 import 'package:loop/screens/home/addon/update_tag_screen.dart';
@@ -22,5 +23,6 @@ class AppRoutes {
     '/updateTagScreen': (context) => const UpdateTagScreen(),
     '/updateFollowerScreen': (context) => const UpdateFollowerScreen(),
     '/editScopeScreen': (context) => const EditScopeScreen(),
+    '/feasibilityDetails': (context) => const FeasibilityDetailsScreen(),
   };
 }

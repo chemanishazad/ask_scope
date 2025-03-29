@@ -254,7 +254,8 @@ final filterUserDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
     throw Exception('Error: ${e.toString()}');
   }
 });
-final feasibilityDataProvider = FutureProvider<List<dynamic>>((ref) async {
+final feasibilityDataProvider =
+    FutureProvider<Map<String, dynamic>>((ref) async {
   try {
     Response response = await ApiMaster().fire(
       path: '/getAllFeasabilityAssignedToUser',
@@ -264,9 +265,59 @@ final feasibilityDataProvider = FutureProvider<List<dynamic>>((ref) async {
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
 
-      return jsonData['data'];
+      return jsonData;
     } else {
       throw Exception('Failed to fetch jobs');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final transferUserProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/transferUser',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['refId'],
+        'quote_id': params['quoteId'],
+        'user_id': params['userId'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final markCallRecordProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/markascallrecordingpending',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['refId'],
+        'quote_id': params['quoteId'],
+        'callrecordingpending': params['callRecordingPending'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
     }
   } catch (e) {
     throw Exception('Error: ${e.toString()}');

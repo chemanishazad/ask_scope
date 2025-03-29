@@ -1,18 +1,26 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/core/const/styles.dart';
+import 'package:loop/provider/home/home_provider.dart';
 import 'package:number_to_words/number_to_words.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ScopeDetailsCard extends StatelessWidget {
+class ScopeDetailsCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> quote;
-
   const ScopeDetailsCard({super.key, required this.quote});
+  @override
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _ScopeDetailsCardState();
+}
 
+class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
   @override
   Widget build(BuildContext context) {
+    print(widget.quote['assign_id']);
     return Container(
         width: double.infinity,
         decoration: cardDecoration(context: context),
@@ -20,19 +28,38 @@ class ScopeDetailsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (quote['tag_names'] != null && quote['tag_names'].isNotEmpty)
-              _buildTagRow('Tags', quote['tag_names']),
-            if (quote['subject_area'] != null &&
-                quote['subject_area'].isNotEmpty)
-              _buildInfoRow('Subject Area', quote['subject_area']),
-            if (quote['service_name'] != null &&
-                quote['service_name'].isNotEmpty)
-              _buildInfoRow('Service Required', quote['service_name']),
-            if (quote['plan'] != null) _buildInfoRow('Plan', quote['plan']),
-            if (quote['old_plan'] != null)
-              _buildInfoRow('Old Plan', quote['old_plan']),
-            _buildPlanDescription(quote['plan_comments'], quote['word_counts']),
-            if (quote['comments'] != null && quote['comments'].isNotEmpty)
+            Row(children: [
+              Expanded(
+                  child: _buildInfoRow(
+                      'Ref ID', '# ${widget.quote['assign_id']}')),
+              if (widget.quote['callrecordingpending'] == '1')
+                const Padding(
+                  padding: EdgeInsets.only(left: 8.0),
+                  child: Icon(Icons.headphones),
+                ),
+              if (widget.quote['edited'] == '1')
+                const Padding(
+                  padding: EdgeInsets.only(left: 8.0),
+                  child: Icon((Icons.edit)),
+                ),
+            ]),
+            if (widget.quote['tag_names'] != null &&
+                widget.quote['tag_names'].isNotEmpty)
+              _buildTagRow('Tags', widget.quote['tag_names']),
+            if (widget.quote['subject_area'] != null &&
+                widget.quote['subject_area'].isNotEmpty)
+              _buildInfoRow('Subject Area', widget.quote['subject_area']),
+            if (widget.quote['service_name'] != null &&
+                widget.quote['service_name'].isNotEmpty)
+              _buildInfoRow('Service Required', widget.quote['service_name']),
+            if (widget.quote['plan'] != null)
+              _buildInfoRow('Plan', widget.quote['plan']),
+            if (widget.quote['old_plan'] != null)
+              _buildInfoRow('Old Plan', widget.quote['old_plan']),
+            _buildPlanDescription(
+                widget.quote['plan_comments'], widget.quote['word_counts']),
+            if (widget.quote['comments'] != null &&
+                widget.quote['comments'].isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Column(
@@ -40,19 +67,48 @@ class ScopeDetailsCard extends StatelessWidget {
                   children: [
                     const Text(
                       'Description',
-                      style: TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     Html(
-                      data: quote['comments'],
+                      data: widget.quote['comments'],
                     ),
                   ],
                 ),
               ),
             _buildPriceDetails(),
-            if (quote['relevant_file'] is List)
-              _buildRelevantFilesSection(
-                  List<Map<String, dynamic>>.from(quote['relevant_file'])),
+            if (widget.quote['relevant_file'] is List)
+              _buildRelevantFilesSection(List<Map<String, dynamic>>.from(
+                  widget.quote['relevant_file'])),
+            if (widget.quote['callrecordingpending'] == '0' ||
+                widget.quote['callrecordingpendinguser'] ==
+                    widget.quote['user_id'])
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final response = await ref.read(markCallRecordProvider({
+                    'refId': widget.quote['assign_id'] ?? '',
+                    'quoteId': widget.quote['quoteid'] ?? '',
+                    'callRecordingPending':
+                        widget.quote['callrecordingpending'] == '0' ? '1' : '0',
+                  }).future);
+
+                  print("Response: $response");
+
+                  if (response['status'] == true) {
+                    setState(() {});
+
+                    Fluttertoast.showToast(msg: response['message']);
+                    Navigator.pop(context);
+                  } else {
+                    Fluttertoast.showToast(msg: response['message']);
+                  }
+                },
+                label: Text(widget.quote['callrecordingpending'] == '1'
+                    ? 'Remove Call Recording Pending'
+                    : 'Mark Call Recording Pending'),
+                icon: const Icon(Icons.headphones, color: Colors.white),
+              ),
+            const SizedBox(height: 8),
           ],
         ));
   }
@@ -92,14 +148,14 @@ class ScopeDetailsCard extends StatelessWidget {
   }
 
   Widget _buildPriceDetails() {
-    List<String>? initialPrices = quote['quote_price'] != null
-        ? (quote['quote_price'] as String).split(',')
+    List<String>? initialPrices = widget.quote['quote_price'] != null
+        ? (widget.quote['quote_price'] as String).split(',')
         : null;
-    List<String>? discountPrices = quote['discount_price'] != null
-        ? (quote['discount_price'] as String).split(',')
+    List<String>? discountPrices = widget.quote['discount_price'] != null
+        ? (widget.quote['discount_price'] as String).split(',')
         : null;
-    List<String>? finalPrices = quote['final_price'] != null
-        ? (quote['final_price'] as String).split(',')
+    List<String>? finalPrices = widget.quote['final_price'] != null
+        ? (widget.quote['final_price'] as String).split(',')
         : null;
 
     List<String> planTypes = ["Basic", "Standard", "Advanced"];
@@ -262,7 +318,7 @@ class ScopeDetailsCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        convertLargeNumberToWords(wordCount),
+                        '${convertLargeNumberToWords(wordCount)} words',
                         style: const TextStyle(
                             fontSize: 11, color: Colors.black87),
                       ),
