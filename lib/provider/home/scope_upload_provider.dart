@@ -6,6 +6,7 @@ import 'package:http/http.dart';
 import 'package:loop/core/utils/service.dart';
 import 'package:loop/model/home/edit_scope_model.dart';
 import 'package:loop/model/home/scope_upload_model.dart';
+import 'package:loop/provider/home/askDiscountApiModel.dart';
 import 'package:loop/provider/home/complete_feasibility_model.dart';
 
 final addNewScopeProvider =
@@ -174,6 +175,40 @@ final completeFeasibilityProvider =
     final List<String> fileFieldNames = ['file'];
     Response response = await ApiMaster().fire(
       path: '/completeFeasabilityNew',
+      method: HttpMethod.$formdata,
+      fileFieldNames: fileFieldNames,
+      multipartFields: fields,
+      files: params.file,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('data${data}');
+      return data;
+    } else {
+      return {'status': false, 'message': 'Failed to fetch skills'};
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final askDiscountProvider =
+    FutureProvider.family<Map<String, dynamic>, AskDiscountModel>(
+        (ref, params) async {
+  try {
+    final fields = {
+      'ref_id': params.refId,
+      'quote_id': params.quoteId,
+      'ptp': params.ptp,
+      'ptp_comments': params.comments,
+      'ptp_amount': params.amount,
+      'old_plans': params.oldPlans,
+      'selected_plans': params.selectedPlan,
+    };
+
+    final List<String> fileFieldNames = ['ptp_file'];
+    Response response = await ApiMaster().fire(
+      path: '/askPtp',
       method: HttpMethod.$formdata,
       fileFieldNames: fileFieldNames,
       multipartFields: fields,

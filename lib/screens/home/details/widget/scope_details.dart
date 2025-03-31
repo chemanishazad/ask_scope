@@ -80,6 +80,15 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
             if (widget.quote['relevant_file'] is List)
               _buildRelevantFilesSection(List<Map<String, dynamic>>.from(
                   widget.quote['relevant_file'])),
+            if (widget.quote['quote_status'] == 'Submitted')
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/askDiscount',
+                      arguments: widget.quote);
+                },
+                label: const Text('Ask Discount'),
+                icon: const Icon(Icons.discount_outlined, color: Colors.white),
+              ),
             if (widget.quote['callrecordingpending'] == '0' ||
                 widget.quote['callrecordingpendinguser'] ==
                     widget.quote['user_id'])
@@ -158,9 +167,33 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
         ? (widget.quote['final_price'] as String).split(',')
         : null;
 
-    List<String> planTypes = ["Basic", "Standard", "Advanced"];
+    List<String> selectedPlans = widget.quote['plan'] != null
+        ? (widget.quote['plan'] as String).split(',')
+        : [];
 
-    Widget buildPriceRow(String title, List<String> prices, Color bgColor) {
+    Map<String, dynamic> comments = {};
+    if (widget.quote['new_comments'] != null) {
+      try {
+        comments =
+            jsonDecode(widget.quote['new_comments']) as Map<String, dynamic>;
+      } catch (e) {
+        print("Error decoding new_comments: $e");
+      }
+    }
+
+    List<String> allPlans = ["Basic", "Standard", "Advanced"];
+
+    List<String> orderedFinalPrices = List.filled(selectedPlans.length, "N/A");
+    for (int i = 0;
+        i < selectedPlans.length && i < (finalPrices?.length ?? 0);
+        i++) {
+      orderedFinalPrices[i] = finalPrices![i];
+    }
+
+    Widget buildPriceRow(String title, List<String>? prices, Color bgColor,
+        {bool strikeThrough = false, bool filterByPlan = false}) {
+      if (prices == null) return const SizedBox.shrink();
+
       return Container(
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.all(8),
@@ -173,11 +206,16 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             Column(
-              children: List.generate(prices.length, (index) {
+              children: List.generate(selectedPlans.length, (index) {
+                String plan = selectedPlans[index];
+                String comment = comments[plan] ?? "No comments available";
+                String priceText =
+                    index < prices.length ? prices[index] : 'N/A';
+
                 return Container(
                   padding:
                       const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
@@ -186,22 +224,37 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "${planTypes[index].toUpperCase()}:",
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${plan.toUpperCase()}:",
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87),
+                          ),
+                          Text(
+                            "INR $priceText",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                              decoration: strikeThrough
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        "INR ${prices[index]}",
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          comment,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ),
                     ],
                   ),
@@ -218,12 +271,15 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
       children: [
         if (initialPrices != null)
           buildPriceRow(
-              "Initial Plan Price", initialPrices, Colors.grey.shade200),
+              "Initial Plan Price", initialPrices, Colors.grey.shade200,
+              strikeThrough: true),
         if (discountPrices != null)
           buildPriceRow(
-              "Discounted Price", discountPrices, Colors.grey.shade400),
+              "Discounted Price", discountPrices, Colors.grey.shade400,
+              strikeThrough: true, filterByPlan: true),
         if (finalPrices != null)
-          buildPriceRow("Final Price", finalPrices, Colors.amber.shade400),
+          buildPriceRow(
+              "Final Price", orderedFinalPrices, Colors.amber.shade400),
       ],
     );
   }
@@ -246,18 +302,17 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
         Map<String, dynamic> tempWordCounts =
             Map<String, dynamic>.from(jsonDecode(wordCountJson));
 
-        // Convert all values to integers safely
         wordCounts = tempWordCounts.map((key, value) {
           if (value == null || value == "null") {
-            return MapEntry(key, null); // Handle nulls
+            return MapEntry(key, null);
           }
           if (value is String && int.tryParse(value) != null) {
-            return MapEntry(key, int.parse(value)); // Convert string to int
+            return MapEntry(key, int.parse(value));
           }
           if (value is int) {
             return MapEntry(key, value);
           }
-          return MapEntry(key, null); // Fallback if type is unexpected
+          return MapEntry(key, null);
         });
       }
     } catch (e) {

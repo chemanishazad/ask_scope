@@ -9,6 +9,7 @@ import 'package:loop/screens/home/addon/update_tag_screen.dart';
 import 'package:loop/screens/home/details/addScope/add_new_scope.dart';
 import 'package:loop/screens/home/details/details_query.dart';
 import 'package:loop/screens/home/details/scope_card.dart';
+import 'package:loop/screens/home/details/widget/ask_discount_screen.dart';
 import 'package:loop/screens/home/notification/notification_screen.dart';
 
 class AppRoutes {
@@ -24,5 +25,6 @@ class AppRoutes {
     '/updateFollowerScreen': (context) => const UpdateFollowerScreen(),
     '/editScopeScreen': (context) => const EditScopeScreen(),
     '/feasibilityDetails': (context) => const FeasibilityDetailsScreen(),
+    '/askDiscount': (context) => const AskDiscountScreen(),
   };
 }
