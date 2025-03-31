@@ -3,6 +3,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/provider/home/home_provider.dart';
+import 'package:loop/screens/home/details/widget/chat_screen.dart';
 import 'package:loop/screens/home/details/widget/details_card.dart';
 import 'package:loop/screens/home/details/widget/feasibility_history.dart';
 import 'package:loop/screens/home/details/widget/query_history.dart';
@@ -21,6 +22,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
   String? refId;
   String? quoteId;
   Map<String, dynamic>? details;
+  Map<String, dynamic>? chatData;
   Map<String, dynamic>? history;
   Map<String, dynamic>? feasibility;
   bool isLoading = true;
@@ -54,8 +56,14 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
             'quoteId': args['quoteId'],
           }).future);
 
+          final queryChat = await ref.read(queryChatProvider({
+            'quoteId': args['quoteId'],
+          }).future);
+
           setState(() {
             refId = args['refId'];
+            quoteId = args['quoteId'];
+            chatData = queryChat;
             details = fetchedDetails;
             history = historyData;
             feasibility = feasibilityData;
@@ -140,7 +148,8 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                             ),
                           ),
 
-                          const Center(child: Text("Communication Data")),
+                          ChatScreen(
+                              chat: chatData?['data'], quoteId: quoteId ?? ''),
                           SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

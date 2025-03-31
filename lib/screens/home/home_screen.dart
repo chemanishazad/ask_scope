@@ -199,10 +199,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text("Query History",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showMenuOptions(context),
-          ),
           asyncData.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stackTrace) =>
@@ -212,7 +208,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 return IconButton(
                   icon: Badge(
-                    label: Text(count.toString()),
+                    label: Text(
+                      count.toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     child: const Icon(Icons.notifications, color: Colors.white),
                   ),
                   onPressed: () {
@@ -220,15 +219,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   },
                 );
               }),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onPressed: () => _showMenuOptions(context),
+          ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
             child: isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator())
                 : displayedClientData.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Text(
                         "No results found",
                       ))
@@ -238,7 +241,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           itemCount: displayedClientData.length,
                           itemBuilder: (context, index) {
                             return Column(children: [
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               _buildClientCard(displayedClientData[index])
                             ]);
                           },

@@ -156,6 +156,30 @@ final quoteHistoryProvider =
     }
   },
 );
+final queryChatProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
+  (ref, data) async {
+    final param = {
+      'quote_id': data['quoteId'],
+    };
+    try {
+      final response = await ApiMaster().fire(
+        path: '/getQuoteChatApiNew',
+        method: HttpMethod.$get,
+        queryParameters: param,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData;
+      } else {
+        throw Exception('Failed to fetch notifications');
+      }
+    } catch (e) {
+      throw Exception('Error: ${e.toString()}');
+    }
+  },
+);
 final feasibilityHistoryProvider =
     FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
   (ref, data) async {
@@ -166,6 +190,28 @@ final feasibilityHistoryProvider =
     try {
       final response = await ApiMaster().fire(
         path: '/getFeasabilityHistory',
+        method: HttpMethod.$get,
+        queryParameters: param,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData;
+      } else {
+        throw Exception('Failed to fetch notifications');
+      }
+    } catch (e) {
+      throw Exception('Error: ${e.toString()}');
+    }
+  },
+);
+final chatDropdownProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
+  (ref, data) async {
+    final param = {'quote_id': data['quoteId']};
+    try {
+      final response = await ApiMaster().fire(
+        path: '/fetchUsersToMention',
         method: HttpMethod.$get,
         queryParameters: param,
       );
@@ -240,6 +286,24 @@ final filterUserDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
   try {
     Response response = await ApiMaster().fire(
       path: '/getExceptUsers',
+      method: HttpMethod.$get,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      return jsonData['data'];
+    } else {
+      throw Exception('Failed to fetch jobs');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final allUserDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getAllUsers',
       method: HttpMethod.$get,
     );
 
