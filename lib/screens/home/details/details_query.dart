@@ -21,6 +21,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
     with SingleTickerProviderStateMixin {
   String? refId;
   String? quoteId;
+  String? id;
   Map<String, dynamic>? details;
   Map<String, dynamic>? chatData;
   Map<String, dynamic>? history;
@@ -63,10 +64,12 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
           setState(() {
             refId = args['refId'];
             quoteId = args['quoteId'];
+
             chatData = queryChat;
             details = fetchedDetails;
             history = historyData;
             feasibility = feasibilityData;
+            // id = fetchedDetails['quoteInfo']['user_id'];
             isLoading = false;
           });
         } catch (error) {
@@ -82,7 +85,10 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
   @override
   Widget build(BuildContext context) {
     final List<dynamic>? quoteInfo = details?['quoteInfo'];
-
+    setState(() {
+      id = quoteInfo?[0]['user_id'];
+    });
+    print(id);
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
@@ -149,7 +155,9 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                           ),
 
                           ChatScreen(
-                              chat: chatData?['data'], quoteId: quoteId ?? ''),
+                              chat: chatData?['data'],
+                              quoteId: quoteId ?? '',
+                              userId: id ?? ''),
                           SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

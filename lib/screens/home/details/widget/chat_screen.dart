@@ -1,14 +1,21 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:loop/provider/home/home_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final List<dynamic> chat;
   final String quoteId;
-  const ChatScreen({super.key, required this.chat, required this.quoteId});
+  final String userId;
+  const ChatScreen(
+      {super.key,
+      required this.chat,
+      required this.quoteId,
+      required this.userId});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _ChatScreenState();
@@ -18,76 +25,133 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
-  final LayerLink _mentionLayerLink = LayerLink();
+  final _debouncer = Debouncer(milliseconds: 300);
 
   OverlayEntry? _mentionOverlayEntry;
   List<Map<String, dynamic>> _availableUsers = [];
   dynamic _replyingToMessage;
   File? _selectedFile;
+  bool _isMentionOverlayVisible = false;
+  bool _isSending = false;
+  final _messageInputKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _loadAvailableUsers();
-    _messageFocusNode.addListener(() {
-      if (!_messageFocusNode.hasFocus) {
-        _hideMentionOverlay();
-      }
-    });
+    _fetchAvailableUsers();
+    _messageFocusNode.addListener(_handleFocusChange);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _scrollToBottomOfChat());
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _messageFocusNode.removeListener(_handleFocusChange);
     _messageFocusNode.dispose();
-    _hideMentionOverlay();
+    _removeMentionOverlay();
+    _debouncer.cancel();
     super.dispose();
   }
 
-  Future<void> _loadAvailableUsers() async {
-    final chatUsers = await ref
-        .read(chatDropdownProvider({'quoteId': widget.quoteId}).future);
-
-    setState(() {
-      _availableUsers = (chatUsers['data'] as List)
-          .map((user) => {
-                'id': user['id'],
-                'name': '${user['fld_first_name']} ${user['fld_last_name']}'
-              })
-          .toList();
-    });
-
-    print("Loaded users: $_availableUsers");
-
-    if (_messageController.text.contains('@')) {
-      _handleMentionTrigger(_messageController.text);
+  void _handleFocusChange() {
+    if (!_messageFocusNode.hasFocus) {
+      _removeMentionOverlay();
     }
   }
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _selectedFile = File(result.files.single.path!);
-      });
+  Future<void> _fetchAvailableUsers() async {
+    try {
+      final chatUsers = await ref
+          .read(chatDropdownProvider({'quoteId': widget.quoteId}).future);
+
+      if (mounted) {
+        setState(() {
+          _availableUsers = (chatUsers['data'] as List)
+              .map((user) => {
+                    'id': user['id'],
+                    'name':
+                        '${user['fld_first_name']} ${user['fld_last_name']}',
+                    'email': user['fld_email'] ?? '',
+                  })
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching users: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load team members: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  String _formatMessageDate(String timestamp) {
-    final dateTime =
-        DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp) * 1000);
-    return DateFormat('MMM dd, hh:mm a').format(dateTime);
+  Future<void> _selectFileToAttach() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty && mounted) {
+        setState(() {
+          _selectedFile = File(result.files.single.path!);
+        });
+        _scrollToBottomOfChat();
+      }
+    } catch (e) {
+      debugPrint('File picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to attach file: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _handleReply(dynamic message) {
-    setState(() => _replyingToMessage = message);
-    _scrollToBottom();
+  String _formatMessageTimestamp(String timestamp) {
+    try {
+      final dateTime =
+          DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp) * 1000);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+      if (messageDate == today) {
+        return DateFormat('hh:mm a').format(dateTime);
+      } else if (messageDate.year == now.year) {
+        return DateFormat('MMM dd, hh:mm a').format(dateTime);
+      } else {
+        return DateFormat('MMM dd yyyy, hh:mm a').format(dateTime);
+      }
+    } catch (e) {
+      return timestamp;
+    }
   }
 
-  void _cancelReply() => setState(() => _replyingToMessage = null);
+  void _setMessageToReply(dynamic message) {
+    if (mounted) {
+      setState(() => _replyingToMessage = message);
+      _scrollToBottomOfChat();
+      _messageFocusNode.requestFocus();
+    }
+  }
 
-  void _scrollToBottom() {
+  void _clearReply() {
+    if (mounted) {
+      setState(() => _replyingToMessage = null);
+    }
+  }
+
+  void _scrollToBottomOfChat() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -99,40 +163,73 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-    _messageController.clear();
-    if (_replyingToMessage != null) _cancelReply();
-  }
+  Future<void> _sendChatMessage() async {
+    if (_messageController.text.trim().isEmpty && _selectedFile == null) return;
 
-  void _handleMentionTrigger(String text) {
-    final cursorPosition = _messageController.selection.baseOffset;
-    print("Cursor Position: $cursorPosition, Text: $text");
-
-    if (cursorPosition <= 0 || text.length < cursorPosition) {
-      _hideMentionOverlay();
-      return;
+    if (mounted) {
+      setState(() => _isSending = true);
     }
 
-    if (text[cursorPosition - 1] == '@') {
-      print("Mention detected!");
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      final mentionedIds = _getMentionedUserIds();
-      final filteredUsers = _availableUsers
-          .where((user) => !mentionedIds.contains(user['id']))
-          .toList();
-
-      print("Filtered Users: $filteredUsers");
-
-      if (filteredUsers.isNotEmpty) {
-        _showMentionOverlay(filteredUsers, cursorPosition);
-      } else {
-        _hideMentionOverlay();
+      if (mounted) {
+        _messageController.clear();
+        setState(() {
+          _selectedFile = null;
+          _isSending = false;
+          if (_replyingToMessage != null) _clearReply();
+        });
+        _scrollToBottomOfChat();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send message: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
-  Set<String> _getMentionedUserIds() {
+  void _showMentionSuggestionsIfNeeded(String text) {
+    _debouncer.run(() {
+      final cursorPosition = _messageController.selection.baseOffset;
+
+      if (cursorPosition <= 0 || text.length < cursorPosition) {
+        _removeMentionOverlay();
+        return;
+      }
+
+      final lastAtPos = text.lastIndexOf('@', cursorPosition - 1);
+      if (lastAtPos == -1 ||
+          lastAtPos < text.lastIndexOf(' ', cursorPosition)) {
+        _removeMentionOverlay();
+        return;
+      }
+
+      final searchTerm =
+          text.substring(lastAtPos + 1, cursorPosition).toLowerCase();
+      final mentionedIds = _extractMentionedUserIds();
+      final availableUsersForMention = _availableUsers
+          .where((user) =>
+              !mentionedIds.contains(user['id']) &&
+              (user['name'].toLowerCase().contains(searchTerm) ||
+                  user['email'].toLowerCase().contains(searchTerm)))
+          .toList();
+
+      if (availableUsersForMention.isNotEmpty) {
+        _displayMentionSuggestions(availableUsersForMention, cursorPosition);
+      } else {
+        _removeMentionOverlay();
+      }
+    });
+  }
+
+  Set<String> _extractMentionedUserIds() {
     final text = _messageController.text;
     final mentions = RegExp(r'\{\{(.*?),(.*?)\}\}');
     final mentionedIds = <String>{};
@@ -143,42 +240,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return mentionedIds;
   }
 
-  void _showMentionOverlay(List<Map<String, dynamic>> users, int cursorPos) {
-    print("Showing overlay for users: $users");
+  void _displayMentionSuggestions(
+      List<Map<String, dynamic>> users, int cursorPos) {
+    if (_isMentionOverlayVisible) {
+      _refreshMentionOverlay(users);
+      return;
+    }
 
     _mentionOverlayEntry?.remove();
 
-    final renderBox = context.findRenderObject() as RenderBox;
+    final renderBox =
+        _messageInputKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
     final offset = renderBox.localToGlobal(Offset.zero);
-    final textFieldHeight = renderBox.size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     _mentionOverlayEntry = OverlayEntry(
       builder: (context) {
         return Positioned(
           left: offset.dx,
-          top: (offset.dy + textFieldHeight - 200) - keyboardHeight,
-          width: renderBox.size.width,
+          top: (offset.dy - 250) - keyboardHeight,
+          width: renderBox.size.width * 1,
           child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
             child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
+              constraints: const BoxConstraints(maxHeight: 220),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: users.length,
-                itemBuilder: (context, index) {
-                  final user = users[index];
-                  print("Adding user to overlay: ${user['name']}");
-                  return ListTile(
-                    title: Text(user['name']),
-                    onTap: () => _selectMentionedUser(user),
-                  );
-                },
+              child: Column(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Mention Team Member',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).primaryColor,
+                            fontSize: 11,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close,
+                              size: 20, color: Theme.of(context).primaryColor),
+                          onPressed: _removeMentionOverlay,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return _buildMentionUserItem(user);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -187,350 +332,374 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     Overlay.of(context).insert(_mentionOverlayEntry!);
+    if (mounted) {
+      setState(() => _isMentionOverlayVisible = true);
+    }
   }
 
-  void _updateMentionOverlay(List<Map<String, dynamic>> users) {
+  Widget _buildMentionUserItem(Map<String, dynamic> user) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.blue.shade100,
+        child: Text(
+          user['name'][0].toUpperCase(),
+          style: TextStyle(
+            color: Colors.blue.shade800,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      title: Text(
+        user['name'],
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        user['email'],
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.grey.shade600,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: () => _insertMentionedUser(user),
+    );
+  }
+
+  void _refreshMentionOverlay(List<Map<String, dynamic>> users) {
     if (_mentionOverlayEntry == null) return;
 
     _mentionOverlayEntry!.markNeedsBuild();
     if (users.isEmpty) {
-      _hideMentionOverlay();
+      _removeMentionOverlay();
     }
   }
 
-  void _hideMentionOverlay() {
-    _mentionOverlayEntry?.remove();
-    _mentionOverlayEntry = null;
+  void _removeMentionOverlay() {
+    if (_mentionOverlayEntry != null) {
+      _mentionOverlayEntry!.remove();
+      _mentionOverlayEntry = null;
+      if (mounted) {
+        setState(() => _isMentionOverlayVisible = false);
+      }
+    }
   }
 
-  void _selectMentionedUser(Map<String, dynamic> user) {
+  void _insertMentionedUser(Map<String, dynamic> user) {
     final cursorPosition = _messageController.selection.baseOffset;
     final text = _messageController.text;
 
-    // Find the last @ position before cursor
     final atPos = text.lastIndexOf('@', cursorPosition - 1);
     if (atPos == -1) return;
 
-    // Create a proper mention format
-    final mention = '{{${user['name']},${user['id']}}}';
-
-    // Replace @ with formatted mention
+    final mention = '${user['name']}';
     final before = text.substring(0, atPos);
     final after = text.substring(cursorPosition);
-    _messageController.text = '$before$mention$after';
+    _messageController.text = '$before$mention $after';
 
-    // Move cursor to the end of the inserted mention
     _messageController.selection = TextSelection.collapsed(
-      offset: atPos + mention.length,
+      offset: atPos + mention.length + 1,
     );
 
-    _hideMentionOverlay();
+    _removeMentionOverlay();
     _messageFocusNode.requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    final sortedChat = _getSortedChatMessages();
-    print(_availableUsers);
+    final theme = Theme.of(context);
+    final sortedChat = _sortChatMessagesByDate();
+    print(widget.userId);
     return Scaffold(
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(8),
-              itemCount: sortedChat.length,
-              itemBuilder: (context, index) =>
-                  _buildMessageItem(sortedChat[index]),
-            ),
+            child: _buildChatList(sortedChat),
           ),
-          _buildMessageInput(),
+          _buildMessageComposer(theme),
         ],
       ),
     );
   }
 
-  List<dynamic> _getSortedChatMessages() {
-    return List.from(widget.chat)
-      ..sort((a, b) => int.parse(a['date']).compareTo(int.parse(b['date'])));
+  Widget _buildChatList(List<dynamic> messages) {
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return _buildChatMessageWithReplies(message);
+      },
+    );
   }
 
-  Widget _buildMessageItem(dynamic message) {
+  Widget _buildChatMessageWithReplies(dynamic message) {
+    final hasReplies =
+        message['replies'] != null && message['replies'].isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        MessageBubble(
-          message: message,
-          formatDate: _formatMessageDate,
-          isMainMessage: true,
-        ),
-        if (message['replies'] != null && message['replies'].isNotEmpty)
+        _buildChatMessageItem(message,
+            isMainMessage: true, showReplyButton: !hasReplies),
+        if (hasReplies)
           Padding(
-            padding: const EdgeInsets.only(left: 32.0),
+            padding: const EdgeInsets.only(left: 40.0),
             child: Column(
-              children: message['replies']
-                  .map<Widget>((reply) => MessageBubble(
-                        message: reply,
-                        formatDate: _formatMessageDate,
-                        isMainMessage: false,
-                      ))
-                  .toList(),
+              children: (message['replies'] as List)
+                  .asMap()
+                  .entries
+                  .map<Widget>((entry) {
+                final isLastReply = entry.key == message['replies'].length - 1;
+                return _buildChatMessageItem(entry.value,
+                    isMainMessage: false, showReplyButton: isLastReply);
+              }).toList(),
             ),
           ),
-        _buildReplyButton(message),
-        const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildReplyButton(dynamic message) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 12.0),
-        child: TextButton(
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          onPressed: () => _handleReply(message),
-          child: Text(
-            'Reply',
-            style: TextStyle(
-              color: Colors.blue.shade600,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageInput() {
-    return CompositedTransformTarget(
-      link: _mentionLayerLink,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            if (_replyingToMessage != null) _buildReplyPreview(),
-            if (_selectedFile != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Row(children: [
-                  Icon(Icons.attachment, color: Colors.blue.shade600),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _selectedFile!.path.split('/').last,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 16),
-                    onPressed: () => setState(() => _selectedFile = null),
-                  ),
-                ]),
-              ),
-            Row(
+  Widget _buildChatMessageItem(dynamic message,
+      {bool isMainMessage = false, bool showReplyButton = false}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _buildUserAvatar(message),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.attach_file),
-                  onPressed: _pickFile,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    focusNode: _messageFocusNode,
-                    maxLines: 3,
-                    minLines: 1,
-                    style: const TextStyle(fontSize: 13),
-                    onChanged: _handleMentionTrigger,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      hintStyle:
-                          TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.blue,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, size: 18, color: Colors.white),
-                    onPressed: _sendMessage,
-                  ),
-                ),
+                _buildMessageHeader(message),
+                const SizedBox(height: 4),
+                _buildMessageBubble(message, showReplyButton),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReplyPreview() {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Replying to ${_replyingToMessage['fld_first_name']}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _cancelReply,
-                child: Icon(
-                  Icons.close,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _cleanMessage(_replyingToMessage['message']),
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade800,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  String _cleanMessage(String message) {
-    return message.replaceAllMapped(RegExp(r'\{\{(.*?)\}\}'), (match) {
-      return match.group(1)!.split(',').first.trim();
-    });
-  }
-}
-
-class MessageBubble extends StatelessWidget {
-  final dynamic message;
-  final String Function(String) formatDate;
-  final bool isMainMessage;
-
-  const MessageBubble({
-    super.key,
-    required this.message,
-    required this.formatDate,
-    this.isMainMessage = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isPending = isMainMessage &&
-        message['pending_responses'] != null &&
-        message['pending_responses'].isNotEmpty;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: Colors.blue.shade100,
-            child: Text(
+  Widget _buildUserAvatar(dynamic message) {
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.blue.shade100,
+      child: message['fld_avatar'] == null || message['fld_avatar'].isEmpty
+          ? Text(
               message['fld_first_name'][0].toUpperCase(),
               style: TextStyle(
                 color: Colors.blue.shade800,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
-            ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildMessageHeader(dynamic message) {
+    return Row(
+      children: [
+        Text(
+          '${message['fld_first_name']} ${message['fld_last_name']}',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '${message['fld_first_name']} ${message['fld_last_name']}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      formatDate(message['date']),
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.all(8),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          _formatMessageTimestamp(message['date']),
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMessageBubble(dynamic message, bool showReplyButton) {
+    final isPending = message['pending_responses'] != null &&
+        message['pending_responses'].isNotEmpty;
+    final theme = Theme.of(context);
+    final isFile = message['isfile'] == '1';
+    final filePath = message['file_path'] ?? '';
+    final hasText =
+        message['message']?.isNotEmpty == true && message['message'] != 'null';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.85,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isMainMessage
-                        ? Colors.blue.shade50
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isMainMessage
-                          ? Colors.blue.shade100
-                          : Colors.grey.shade300,
-                      width: 0.5,
+                    color: theme.cardColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                      bottomLeft: Radius.circular(4),
+                      bottomRight: Radius.circular(12),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: Text.rich(
-                    _buildMessageWithMentions(message['message']),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      height: 1.3,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (hasText)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: isFile ? 8.0 : 0),
+                          child: Text.rich(
+                            _parseMessageWithMentions(message['message']),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      if (isFile) _buildFileMessage(filePath),
+                    ],
                   ),
                 ),
-                if (isPending) _buildPendingIndicator(),
+              ),
+              if (showReplyButton)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0),
+                  child: IconButton(
+                    icon: Icon(Icons.reply,
+                        size: 18, color: Colors.grey.shade600),
+                    onPressed: () => _setMessageToReply(message),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (isPending) _buildPendingResponseIndicator(message),
+      ],
+    );
+  }
+
+  Widget _buildFileMessage(String fileUrl) {
+    final fileName = fileUrl.split('/').last;
+
+    return GestureDetector(
+      onTap: () => _launchFileUrl(fileUrl),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _getFileIcon(fileUrl),
+              size: 20,
+              color: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  Text(
+                    'Tap to view',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchFileUrl(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not launch $url'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildPendingResponseIndicator(dynamic message) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.access_time,
+            size: 14,
+            color: Colors.orange.shade600,
+          ),
+          const SizedBox(width: 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '${message['pending_responses'].join(', ')} ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade800,
+                    fontSize: 11,
+                  ),
+                ),
+                TextSpan(
+                  text: 'response pending',
+                  style: TextStyle(
+                    color: Colors.orange.shade600,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -539,7 +708,276 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  TextSpan _buildMessageWithMentions(String message) {
+  List<dynamic> _sortChatMessagesByDate() {
+    return List.from(widget.chat)
+      ..sort((a, b) => int.parse(a['date']).compareTo(int.parse(b['date'])));
+  }
+
+  Widget _buildMessageComposer(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (_replyingToMessage != null) _buildReplyPreview(),
+          if (_selectedFile != null) _buildFileAttachmentPreview(),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.attachment),
+                onPressed: _selectFileToAttach,
+              ),
+              Expanded(
+                child: Container(
+                  key: _messageInputKey,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _messageFocusNode,
+                    maxLines: 4,
+                    minLines: 1,
+                    style: const TextStyle(fontSize: 14),
+                    onTap: () {
+                      if (_messageController.text.contains('@')) {
+                        _showMentionSuggestionsIfNeeded(
+                            _messageController.text);
+                      }
+                    },
+                    onChanged: _showMentionSuggestionsIfNeeded,
+                    decoration: InputDecoration(
+                      hintText: 'Type your message...',
+                      hintStyle: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.primaryColor,
+                ),
+                child: IconButton(
+                  icon: _isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.send,
+                          color: Colors.white,
+                        ),
+                  onPressed: _isSending ? null : _sendChatMessage,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplyPreview() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Replying to ${_replyingToMessage['fld_first_name']}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _parseMessageContent(_replyingToMessage['message']),
+                  style: const TextStyle(
+                    fontSize: 10,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+            onPressed: _clearReply,
+            padding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileAttachmentPreview() {
+    final fileSize = _selectedFile != null
+        ? '${(_selectedFile!.lengthSync() / 1024).toStringAsFixed(1)} KB'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Icon(
+                _getFileIcon(_selectedFile!.path),
+                size: 20,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _selectedFile!.path.split('/').last,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  fileSize,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+            onPressed: () {
+              if (mounted) {
+                setState(() => _selectedFile = null);
+              }
+            },
+            padding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFileIcon(String path) {
+    final extension = path.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return Icons.image;
+      case 'mp4':
+      case 'mov':
+      case 'avi':
+        return Icons.videocam;
+      case 'mp3':
+      case 'wav':
+        return Icons.audiotrack;
+      case 'zip':
+      case 'rar':
+        return Icons.archive;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  String _parseMessageContent(String message) {
+    return message.replaceAllMapped(RegExp(r'\{\{(.*?)\}\}'), (match) {
+      return match.group(1)!.split(',').first.trim();
+    });
+  }
+
+  TextSpan _parseMessageWithMentions(String message) {
     final mentionRegex = RegExp(r'\{\{\{(.*?),(.*?)\}\}\}');
     final parts = message.split(mentionRegex);
     final matches = mentionRegex.allMatches(message).toList();
@@ -558,9 +996,9 @@ class MessageBubble extends StatelessWidget {
         children.add(
           TextSpan(
             text: mention,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.blue,
+              color: Theme.of(context).primaryColor,
             ),
           ),
         );
@@ -569,41 +1007,20 @@ class MessageBubble extends StatelessWidget {
 
     return TextSpan(children: children);
   }
+}
 
-  Widget _buildPendingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        children: [
-          Icon(
-            Icons.access_time,
-            size: 12,
-            color: Colors.orange.shade600,
-          ),
-          const SizedBox(width: 2),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '${message['pending_responses'].join(', ')}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange.shade800,
-                    fontSize: 10,
-                  ),
-                ),
-                TextSpan(
-                  text: ' response pending',
-                  style: TextStyle(
-                    color: Colors.orange.shade600,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+class Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+
+  Debouncer({required this.milliseconds});
+
+  void run(VoidCallback action) {
+    _timer?.cancel();
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
+  }
+
+  void cancel() {
+    _timer?.cancel();
   }
 }
