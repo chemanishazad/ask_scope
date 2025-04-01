@@ -93,6 +93,7 @@ final loginProvider =
         final instaUserName = instaUser['name'];
         final instaUserEmail = instaUser['email_id'];
         final instaUserType = instaUser['user_type'];
+        final instaUserCategories = instaUser['category'];
         final instaTeamId = instaUser['team_id'];
 
         // Store in SharedPreferences
@@ -110,6 +111,7 @@ final loginProvider =
         await prefs.setString('instaUserName', instaUserName);
         await prefs.setString('instaUserEmail', instaUserEmail);
         await prefs.setString('instaUserType', instaUserType);
+        await prefs.setString('instaUserCategories', instaUserCategories);
         await prefs.setString('instaTeamId', instaTeamId);
 
         ApiMaster.setToken(loopUserToken);

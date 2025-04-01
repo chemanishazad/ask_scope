@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:loop/provider/home/home_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -117,6 +118,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _handleTextChanges(String text) {
+    // Get current mentions in the text
+    _extractVisibleMentions(text);
+
+    // Find mentions that were removed
+    final removedMentions = _lastInsertedMentions.where((mention) {
+      return !text.contains(mention['visible']);
+    }).toList();
+
+    // Update tracking
+    if (removedMentions.isNotEmpty) {
+      setState(() {
+        for (final mention in removedMentions) {
+          _mentionedUserIds.remove(mention['id']);
+          _lastInsertedMentions.remove(mention);
+        }
+      });
+    }
+
+    _showMentionSuggestionsIfNeeded(text);
+  }
+
+  Set<String> _extractVisibleMentions(String text) {
+    final mentions = RegExp(r'@([^\s]+)');
+    return mentions.allMatches(text).map((m) => m.group(0)!).toSet();
+  }
+
   String _formatMessageTimestamp(String timestamp) {
     try {
       final dateTime =
@@ -139,7 +167,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _setMessageToReply(dynamic message) {
     if (mounted) {
-      setState(() => _replyingToMessage = message);
+      setState(() {
+        _replyingToMessage = message;
+        _removeMentionOverlay();
+      });
       _scrollToBottomOfChat();
       _messageFocusNode.requestFocus();
     }
@@ -163,7 +194,65 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  Future<void> _sendReplyMessage() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? category = prefs.getString('instaUserCategories');
+    String? userType = prefs.getString('instaUserType');
+
+    if (_messageController.text.trim().isEmpty && _selectedFile == null) return;
+
+    setState(() => _isSending = true);
+
+    try {
+      final formData = {
+        'ref_id': widget.userId,
+        'quote_id': widget.quoteId,
+        'message': _messageController.text,
+        'user_type': userType,
+        'category': category,
+        'markstatus': '0',
+        'reply_to': _replyingToMessage[
+            'message_id'], // Add the message ID being replied to
+        // Don't include mention fields for replies
+      };
+
+      print('Sending reply: $formData');
+      print('file: $_selectedFile');
+
+      // Here you would use a different API endpoint for replies
+      // Example:
+      // final response = await post(
+      //   Uri.parse('https://apacvault.com/Mobapi/submitReplyChat'),
+      //   body: formData,
+      //   headers: {'Authorization': 'YOUR_TOKEN'},
+      // );
+
+      _messageController.clear();
+      setState(() {
+        _selectedFile = null;
+        _isSending = false;
+        _replyingToMessage = null;
+      });
+
+      _scrollToBottomOfChat();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send reply: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _sendChatMessage() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? category = prefs.getString('instaUserCategories');
+    String? userType = prefs.getString('instaUserType');
+
     if (_messageController.text.trim().isEmpty && _selectedFile == null) return;
 
     setState(() => _isSending = true);
@@ -177,23 +266,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         'ref_id': widget.userId,
         'quote_id': widget.quoteId,
         'message': messageText,
-        'user_type': 'user',
-        'category': 'PhD',
+        'user_type': userType,
+        'category': category,
         'markstatus': '0',
         'mention_ids': mentions.map((m) => m['id']).join(','),
         'mention_users': mentions.map((m) => '@${m['name']}').join(','),
       };
 
       print('Sending: $formData');
+      print('file: $_selectedFile');
 
-      // Make the actual API call here
-      // final response = await post(
-      //   Uri.parse('https://apacvault.com/Mobapi/submitUserChatNew'),
-      //   body: formData,
-      //   headers: {'Authorization': 'YOUR_TOKEN'},
-      // );
-
-      // Clear after sending
       _messageController.clear();
       setState(() {
         _selectedFile = null;
@@ -261,7 +343,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
   }
-
 
   void _displayMentionSuggestions(
       List<Map<String, dynamic>> users, int cursorPos) {
@@ -453,7 +534,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'visible': visibleMention,
       'full': fullMention,
       'position': atPos,
-      'length': visibleMention.length
+      'length': visibleMention.length,
+      'id': user['id'].toString()
     });
 
     _messageController.selection = TextSelection.collapsed(
@@ -468,7 +550,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sortedChat = _sortChatMessagesByDate();
-    print(widget.userId);
+
     return Scaffold(
       body: Column(
         children: [
@@ -788,10 +870,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (_selectedFile != null) _buildFileAttachmentPreview(),
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.attachment),
-                onPressed: _selectFileToAttach,
-              ),
+              if (_replyingToMessage == null)
+                IconButton(
+                  icon: const Icon(Icons.attachment),
+                  onPressed: _selectFileToAttach,
+                ),
               Expanded(
                 child: Container(
                   key: _messageInputKey,
@@ -813,14 +896,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     minLines: 1,
                     style: const TextStyle(fontSize: 14),
                     onTap: () {
-                      if (_messageController.text.contains('@')) {
+                      if (_messageController.text.contains('@') &&
+                          _replyingToMessage == null) {
                         _showMentionSuggestionsIfNeeded(
                             _messageController.text);
                       }
                     },
-                    onChanged: _showMentionSuggestionsIfNeeded,
+                    onChanged: (text) {
+                      if (_replyingToMessage == null) {
+                        _handleTextChanges(text);
+                      }
+                    },
                     decoration: InputDecoration(
-                      hintText: 'Type your message...',
+                      hintText: _replyingToMessage != null
+                          ? 'Type your reply...'
+                          : 'Type your message...',
                       hintStyle: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade600,
@@ -854,7 +944,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           Icons.send,
                           color: Colors.white,
                         ),
-                  onPressed: _isSending ? null : _sendChatMessage,
+                  onPressed: _isSending
+                      ? null
+                      : _replyingToMessage != null
+                          ? _sendReplyMessage
+                          : _sendChatMessage,
                 ),
               ),
             ],
@@ -1033,7 +1127,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   TextSpan _parseMessageWithMentions(String message) {
-    final mentionRegex = RegExp(r'\{\{\[(.*?),(.*?)\]\}\}');
+    final mentionRegex = RegExp(r'\{\{\{([^,]+),([^\}]+)\}\}\}');
     final parts = message.split(mentionRegex);
     final matches = mentionRegex.allMatches(message).toList();
 
@@ -1047,10 +1141,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
 
       if (i < matches.length) {
-        final mention = matches[i].group(1)!;
+        final mentionName = matches[i].group(1)!.trim();
         children.add(
           TextSpan(
-            text: mention,
+            text: mentionName,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).primaryColor,
@@ -1058,6 +1152,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       }
+    }
+
+    if (children.isEmpty) {
+      return TextSpan(
+        text: message,
+        style: const TextStyle(color: Colors.black),
+      );
     }
 
     return TextSpan(children: children);
