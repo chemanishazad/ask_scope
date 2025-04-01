@@ -166,22 +166,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _sendChatMessage() async {
     if (_messageController.text.trim().isEmpty && _selectedFile == null) return;
 
-    if (mounted) {
-      setState(() => _isSending = true);
-    }
+    setState(() => _isSending = true);
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
+      final visibleText = _messageController.text;
+      final messageText = _prepareMessageForSending(visibleText);
+      final mentions = _extractMentions(messageText);
 
-      if (mounted) {
-        _messageController.clear();
-        setState(() {
-          _selectedFile = null;
-          _isSending = false;
-          if (_replyingToMessage != null) _clearReply();
-        });
-        _scrollToBottomOfChat();
-      }
+      final formData = {
+        'ref_id': widget.userId,
+        'quote_id': widget.quoteId,
+        'message': messageText,
+        'user_type': 'user',
+        'category': 'PhD',
+        'markstatus': '0',
+        'mention_ids': mentions.map((m) => m['id']).join(','),
+        'mention_users': mentions.map((m) => '@${m['name']}').join(','),
+      };
+
+      print('Sending: $formData');
+
+      // Make the actual API call here
+      // final response = await post(
+      //   Uri.parse('https://apacvault.com/Mobapi/submitUserChatNew'),
+      //   body: formData,
+      //   headers: {'Authorization': 'YOUR_TOKEN'},
+      // );
+
+      // Clear after sending
+      _messageController.clear();
+      setState(() {
+        _selectedFile = null;
+        _isSending = false;
+        _mentionedUserIds.clear();
+        _lastInsertedMentions.clear();
+        if (_replyingToMessage != null) _clearReply();
+      });
+
+      _scrollToBottomOfChat();
     } catch (e) {
       if (mounted) {
         setState(() => _isSending = false);
@@ -193,6 +215,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     }
+  }
+
+  List<Map<String, String>> _extractMentions(String text) {
+    final mentionRegex = RegExp(r'\{\{\[(.*?),(.*?)\]\}\}');
+    final matches = mentionRegex.allMatches(text);
+
+    return matches.map((match) {
+      return {
+        'name': match.group(1)!.trim(),
+        'id': match.group(2)!.trim(),
+      };
+    }).toList();
   }
 
   void _showMentionSuggestionsIfNeeded(String text) {
@@ -213,13 +247,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       final searchTerm =
           text.substring(lastAtPos + 1, cursorPosition).toLowerCase();
-      final mentionedIds = _extractMentionedUserIds();
-      final availableUsersForMention = _availableUsers
-          .where((user) =>
-              !mentionedIds.contains(user['id']) &&
-              (user['name'].toLowerCase().contains(searchTerm) ||
-                  user['email'].toLowerCase().contains(searchTerm)))
-          .toList();
+
+      final availableUsersForMention = _availableUsers.where((user) {
+        return !_mentionedUserIds.contains(user['id'].toString()) &&
+            (user['name'].toLowerCase().contains(searchTerm) ||
+                user['email'].toLowerCase().contains(searchTerm));
+      }).toList();
 
       if (availableUsersForMention.isNotEmpty) {
         _displayMentionSuggestions(availableUsersForMention, cursorPosition);
@@ -229,16 +262,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  Set<String> _extractMentionedUserIds() {
-    final text = _messageController.text;
-    final mentions = RegExp(r'\{\{(.*?),(.*?)\}\}');
-    final mentionedIds = <String>{};
-
-    for (final match in mentions.allMatches(text)) {
-      mentionedIds.add(match.group(2)!.trim());
-    }
-    return mentionedIds;
-  }
 
   void _displayMentionSuggestions(
       List<Map<String, dynamic>> users, int cursorPos) {
@@ -389,20 +412,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  final Set<String> _mentionedUserIds = {};
+
+  String _prepareMessageForSending(String visibleText) {
+    // Sort mentions by position (last to first) to avoid position shifts
+    _lastInsertedMentions
+        .sort((a, b) => b['position'].compareTo(a['position']));
+
+    String preparedText = visibleText;
+    for (final mention in _lastInsertedMentions) {
+      preparedText = preparedText.replaceRange(
+        mention['position'],
+        mention['position'] + mention['length'],
+        mention['full'],
+      );
+    }
+    return preparedText;
+  }
+
+  final List<Map<String, dynamic>> _lastInsertedMentions = [];
   void _insertMentionedUser(Map<String, dynamic> user) {
     final cursorPosition = _messageController.selection.baseOffset;
     final text = _messageController.text;
-
     final atPos = text.lastIndexOf('@', cursorPosition - 1);
     if (atPos == -1) return;
 
-    final mention = '${user['name']}';
+    // Track the mention
+    _mentionedUserIds.add(user['id'].toString());
+
+    final fullMention = '{{[${user['name']},${user['id']}]}}';
+    final visibleMention = '@${user['name']}';
+
     final before = text.substring(0, atPos);
     final after = text.substring(cursorPosition);
-    _messageController.text = '$before$mention $after';
+
+    _messageController.text = '$before$visibleMention $after';
+
+    // Store the mention details
+    _lastInsertedMentions.add({
+      'visible': visibleMention,
+      'full': fullMention,
+      'position': atPos,
+      'length': visibleMention.length
+    });
 
     _messageController.selection = TextSelection.collapsed(
-      offset: atPos + mention.length + 1,
+      offset: (atPos + visibleMention.length + 1).toInt(),
     );
 
     _removeMentionOverlay();
@@ -978,7 +1033,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   TextSpan _parseMessageWithMentions(String message) {
-    final mentionRegex = RegExp(r'\{\{\{(.*?),(.*?)\}\}\}');
+    final mentionRegex = RegExp(r'\{\{\[(.*?),(.*?)\]\}\}');
     final parts = message.split(mentionRegex);
     final matches = mentionRegex.allMatches(message).toList();
 
