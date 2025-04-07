@@ -62,28 +62,32 @@ class _ScopeCardState extends ConsumerState<ScopeCard> {
       appBar: AppBar(
         backgroundColor: Palette.themeColor,
       ),
-      floatingActionButton: FloatingActionButton.small(
-        onPressed: () {
-          Navigator.pushNamed(context, '/addNewScope', arguments: {
-            'clientName': quotes[0]['client_name'],
-            'refId': quotes[0]['assign_id'],
-          });
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: quotes.isNotEmpty
+          ? FloatingActionButton.small(
+              onPressed: () {
+                Navigator.pushNamed(context, '/addNewScope', arguments: {
+                  'clientName': quotes[0]['client_name'],
+                  'refId': quotes[0]['assign_id'],
+                });
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
               ? Center(child: Text("Error: $errorMessage"))
-              : ListView.builder(
-                  cacheExtent: 800,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: quotes.length,
-                  itemBuilder: (context, index) {
-                    final quote = quotes[index];
-                    return QuoteCard(quote: quote, onUpdate: _fetchData);
-                  },
-                ),
+              : quotes.isEmpty
+                  ? const Center(child: Text('No Previous Requests'))
+                  : ListView.builder(
+                      cacheExtent: 800,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: quotes.length,
+                      itemBuilder: (context, index) {
+                        final quote = quotes[index];
+                        return QuoteCard(quote: quote, onUpdate: _fetchData);
+                      },
+                    ),
     );
   }
 }
@@ -133,9 +137,9 @@ class QuoteCard extends StatelessWidget {
                     icon: const Icon(Icons.edit)),
               if (quote['callrecordingpending'] == '1')
                 Padding(
-                  padding: EdgeInsets.only(left: 8.0),
+                  padding: const EdgeInsets.only(left: 8.0),
                   child: IconButton(
-                    icon: Icon(Icons.headphones),
+                    icon: const Icon(Icons.headphones),
                     onPressed: () {
                       Fluttertoast.showToast(
                           msg: 'This data already Call Recording Marked');

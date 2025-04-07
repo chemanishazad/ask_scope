@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/core/const/styles.dart';
 import 'package:loop/provider/auth/auth_provider.dart';
@@ -23,12 +24,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String searchKeywords = '';
   String refId = '';
   String website = '';
+  String scopeToken = '';
+  String transferAccess = '';
+  String tl = '';
 
   @override
   void initState() {
     super.initState();
     contactMadeQuery();
     ref.refresh(notificationGetProvider);
+    loginData();
+  }
+
+  Future<void> loginData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      scopeToken = prefs.getString('scopeadmin') ?? '';
+      transferAccess = prefs.getString('transferaccess') ?? '';
+      tl = prefs.getString('tl') ?? '';
+    });
   }
 
   bool isLoading = false;
@@ -110,6 +124,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
           ),
         ),
+        if (tl == '1')
+          PopupMenuItem(
+            value: 'userRequest',
+            child: ListTile(
+              leading: const Icon(Icons.account_circle_outlined),
+              title: const Text("User Request"),
+              onTap: () {},
+            ),
+          ),
+        if (transferAccess == '1')
+          PopupMenuItem(
+            value: 'transferAccess',
+            child: ListTile(
+              leading: const Icon(Icons.transfer_within_a_station),
+              title: const Text("Transfer Request"),
+              onTap: () {},
+            ),
+          ),
+        if (scopeToken == '1')
+          PopupMenuItem(
+            value: 'scopeRequest',
+            child: ListTile(
+              leading: const Icon(Icons.on_device_training_sharp),
+              title: const Text("Scope Request"),
+              onTap: () {},
+            ),
+          ),
         PopupMenuItem(
           value: 'logout',
           child: ListTile(
@@ -193,6 +234,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncData = ref.watch(notificationGetProvider);
+    print(scopeToken);
+    print(transferAccess);
+    print(tl);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Palette.themeColor,
@@ -215,7 +260,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: const Icon(Icons.notifications, color: Colors.white),
                   ),
                   onPressed: () {
-                    Navigator.pushNamed(context, '/notificationScreen');
+                    Navigator.pushNamed(context, '/notificationScreen').then(
+                      (value) {
+                        ref.invalidate(notificationGetProvider);
+                      },
+                    );
                   },
                 );
               }),
@@ -255,6 +304,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildClientCard(Map<String, dynamic> data) {
+    final theme = Theme.of(context).textTheme;
+
     return Container(
       margin: const EdgeInsets.only(left: 8, right: 8),
       decoration: cardDecoration(context: context),
@@ -288,8 +339,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 data["phone"].isEmpty ? "N/A" : data["phone"]),
             _buildRow(Icons.public, "Website", data["website_name"] ?? "N/A"),
             _buildRow(Icons.calendar_today, "Date", data["date"] ?? "N/A"),
-            _buildRow(
-                Icons.priority_high, "Priority", data["priority"] ?? "N/A"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.priority_high),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                        width: 80,
+                        child: Text("Priority:", style: theme.headlineMedium)),
+                    Text(data["priority"] ?? "N/A",
+                        style: theme.bodyMedium,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+                if (data['looppanel_transfer_access'] == '0' ||
+                    data['looppanel_transfer_access'] == '3')
+                  ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.all(Colors.blue),
+                    ),
+                    onPressed: () async {
+                      final response = await ref.read(
+                          requestAccessProvider({'assignId': data['assign_id']})
+                              .future);
+                      print(response);
+
+                      if (response['status'] == true) {
+                        contactMadeQuery();
+                        Fluttertoast.showToast(msg: response['message']);
+                      } else {
+                        Fluttertoast.showToast(msg: response['error']);
+                      }
+                      print(data['assign_id']);
+                    },
+                    child: const Text('Request Access',
+                        style: TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+                if (data['looppanel_transfer_access'] == '1')
+                  ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.all(Colors.yellow),
+                    ),
+                    onPressed: () {},
+                    child: const Text('Request Pending',
+                        style: TextStyle(color: Colors.black, fontSize: 10)),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

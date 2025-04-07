@@ -3,20 +3,22 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:loop/provider/home/home_provider.dart';
+import 'package:loop/provider/home/submitChatApiModel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  final List<dynamic> chat;
   final String quoteId;
+  final String refId;
   final String userId;
   const ChatScreen(
       {super.key,
-      required this.chat,
       required this.quoteId,
-      required this.userId});
+      required this.userId,
+      required this.refId});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _ChatScreenState();
@@ -31,15 +33,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   OverlayEntry? _mentionOverlayEntry;
   List<Map<String, dynamic>> _availableUsers = [];
   dynamic _replyingToMessage;
-  File? _selectedFile;
+  List<File> _selectedFile = [];
   bool _isMentionOverlayVisible = false;
   bool _isSending = false;
+
+  List<dynamic> chat = [];
+  bool isLoading = false;
   final _messageInputKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _fetchAvailableUsers();
+    _chatFetch();
     _messageFocusNode.addListener(_handleFocusChange);
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _scrollToBottomOfChat());
@@ -59,6 +65,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _handleFocusChange() {
     if (!_messageFocusNode.hasFocus) {
       _removeMentionOverlay();
+    }
+  }
+
+  Future<void> _chatFetch() async {
+    isLoading = true;
+    final res = await ref.read(queryChatProvider({
+      'quoteId': widget.quoteId,
+    }).future);
+    if (res['status'] == true) {
+      setState(() {
+        chat = res['data'];
+        isLoading = false;
+      });
+      _scrollToBottomOfChat();
+    } else {
+      isLoading = false;
+      Fluttertoast.showToast(msg: res['error']);
     }
   }
 
@@ -101,7 +124,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (result != null && result.files.isNotEmpty && mounted) {
         setState(() {
-          _selectedFile = File(result.files.single.path!);
+          _selectedFile.addAll(result.files.map((file) => File(file.path!)));
         });
         _scrollToBottomOfChat();
       }
@@ -119,15 +142,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _handleTextChanges(String text) {
-    // Get current mentions in the text
     _extractVisibleMentions(text);
-
-    // Find mentions that were removed
     final removedMentions = _lastInsertedMentions.where((mention) {
       return !text.contains(mention['visible']);
     }).toList();
-
-    // Update tracking
     if (removedMentions.isNotEmpty) {
       setState(() {
         for (final mention in removedMentions) {
@@ -196,7 +214,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _sendReplyMessage() async {
     final prefs = await SharedPreferences.getInstance();
-    String? category = prefs.getString('instaUserCategories');
     String? userType = prefs.getString('instaUserType');
 
     if (_messageController.text.trim().isEmpty && _selectedFile == null) return;
@@ -204,32 +221,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() => _isSending = true);
 
     try {
-      final formData = {
-        'ref_id': widget.userId,
-        'quote_id': widget.quoteId,
+      final response = await ref.read(replyToChatProvider({
+        'chatId':
+            _replyingToMessage['message_id'] ?? _replyingToMessage['chat_id'],
         'message': _messageController.text,
-        'user_type': userType,
-        'category': category,
-        'markstatus': '0',
-        'reply_to': _replyingToMessage[
-            'message_id'], // Add the message ID being replied to
-        // Don't include mention fields for replies
-      };
-
-      print('Sending reply: $formData');
-      print('file: $_selectedFile');
-
-      // Here you would use a different API endpoint for replies
-      // Example:
-      // final response = await post(
-      //   Uri.parse('https://apacvault.com/Mobapi/submitReplyChat'),
-      //   body: formData,
-      //   headers: {'Authorization': 'YOUR_TOKEN'},
-      // );
+        'userType': userType ?? '',
+      }).future);
+      print('response$response');
+      if (response['status'] == true) {
+        _chatFetch();
+      } else {
+        Fluttertoast.showToast(msg: response['error']);
+      }
 
       _messageController.clear();
       setState(() {
-        _selectedFile = null;
+        _selectedFile = [];
         _isSending = false;
         _replyingToMessage = null;
       });
@@ -262,23 +269,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final messageText = _prepareMessageForSending(visibleText);
       final mentions = _extractMentions(messageText);
 
-      final formData = {
-        'ref_id': widget.userId,
-        'quote_id': widget.quoteId,
-        'message': messageText,
-        'user_type': userType,
-        'category': category,
-        'markstatus': '0',
-        'mention_ids': mentions.map((m) => m['id']).join(','),
-        'mention_users': mentions.map((m) => '@${m['name']}').join(','),
-      };
-
-      print('Sending: $formData');
-      print('file: $_selectedFile');
-
+      final response = await ref.read(submitChatProvider(SubmitChatApiModel(
+              file: _selectedFile,
+              refId: widget.refId,
+              quoteId: widget.quoteId,
+              message: messageText,
+              userType: userType ?? '',
+              category: category ?? '',
+              markStatus: '0',
+              mentionIds: mentions.map((m) => m['id']).join(','),
+              mentionUsers: mentions.map((m) => '@${m['name']}').join(',')))
+          .future);
+      print('response$response');
+      if (response['status'] == true) {
+        _chatFetch();
+      } else {
+        Fluttertoast.showToast(msg: response['error']);
+      }
       _messageController.clear();
       setState(() {
-        _selectedFile = null;
+        _selectedFile = [];
         _isSending = false;
         _mentionedUserIds.clear();
         _lastInsertedMentions.clear();
@@ -300,7 +310,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   List<Map<String, String>> _extractMentions(String text) {
-    final mentionRegex = RegExp(r'\{\{\[(.*?),(.*?)\]\}\}');
+    final mentionRegex = RegExp(r'\{\{\{(.*?),(.*?)\}\}\}');
     final matches = mentionRegex.allMatches(text);
 
     return matches.map((match) {
@@ -496,16 +506,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Set<String> _mentionedUserIds = {};
 
   String _prepareMessageForSending(String visibleText) {
-    // Sort mentions by position (last to first) to avoid position shifts
     _lastInsertedMentions
         .sort((a, b) => b['position'].compareTo(a['position']));
 
     String preparedText = visibleText;
     for (final mention in _lastInsertedMentions) {
+      final name = mention['name'] ?? '';
+      final id = mention['id'] ?? '';
+      final newFormat = '{{{$name,$id}}}';
       preparedText = preparedText.replaceRange(
         mention['position'],
         mention['position'] + mention['length'],
-        mention['full'],
+        newFormat,
       );
     }
     return preparedText;
@@ -521,7 +533,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Track the mention
     _mentionedUserIds.add(user['id'].toString());
 
-    final fullMention = '{{[${user['name']},${user['id']}]}}';
+    final fullMention = '{{{${user['name']},${user['id']}}}}';
     final visibleMention = '@${user['name']}';
 
     final before = text.substring(0, atPos);
@@ -535,7 +547,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'full': fullMention,
       'position': atPos,
       'length': visibleMention.length,
-      'id': user['id'].toString()
+      'id': user['id'].toString(),
+      'name': user['name']
     });
 
     _messageController.selection = TextSelection.collapsed(
@@ -552,14 +565,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final sortedChat = _sortChatMessagesByDate();
 
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: _buildChatList(sortedChat),
-          ),
-          _buildMessageComposer(theme),
-        ],
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: _buildChatList(sortedChat),
+                ),
+                _buildMessageComposer(theme),
+              ],
+            ),
     );
   }
 
@@ -846,7 +861,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   List<dynamic> _sortChatMessagesByDate() {
-    return List.from(widget.chat)
+    return List.from(chat)
       ..sort((a, b) => int.parse(a['date']).compareTo(int.parse(b['date'])));
   }
 
@@ -1016,73 +1031,80 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildFileAttachmentPreview() {
-    final fileSize = _selectedFile != null
-        ? '${(_selectedFile!.lengthSync() / 1024).toStringAsFixed(1)} KB'
-        : '';
+    if (_selectedFile.isEmpty)
+      return SizedBox(); // Return empty widget if no files are selected
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).primaryColor.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+    return Column(
+      children: _selectedFile.map((file) {
+        final fileSize =
+            '${(file.lengthSync() / 1024).toStringAsFixed(1)} KB'; // Corrected file size calculation
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).primaryColor.withOpacity(0.2),
+              width: 1,
             ),
-            child: Center(
-              child: Icon(
-                _getFileIcon(_selectedFile!.path),
-                size: 20,
-                color: Theme.of(context).primaryColor,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Icon(
+                    _getFileIcon(file.path), // Use single file path
+                    size: 20,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _selectedFile!.path.split('/').last,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      file.path.split('/').last, // Use single file path
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      fileSize,
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  fileSize,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+                onPressed: () {
+                  if (mounted) {
+                    setState(() => _selectedFile
+                        .remove(file)); // Remove only the selected file
+                  }
+                },
+                padding: EdgeInsets.zero,
+              ),
+            ],
           ),
-          IconButton(
-            icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
-            onPressed: () {
-              if (mounted) {
-                setState(() => _selectedFile = null);
-              }
-            },
-            padding: EdgeInsets.zero,
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
@@ -1121,7 +1143,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   String _parseMessageContent(String message) {
-    return message.replaceAllMapped(RegExp(r'\{\{(.*?)\}\}'), (match) {
+    return message.replaceAllMapped(RegExp(r'\{\{\{(.*?)\}\}\}'), (match) {
       return match.group(1)!.split(',').first.trim();
     });
   }

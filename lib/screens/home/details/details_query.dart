@@ -155,14 +155,21 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                           ),
 
                           ChatScreen(
-                              chat: chatData?['data'],
+                              refId: refId ?? '',
                               quoteId: quoteId ?? '',
                               userId: id ?? ''),
                           SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Feasibility Comments'),
+                                const Text(
+                                  'Feasibility Comments',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
                                 Html(
                                   data: quoteInfo.isNotEmpty &&
                                           quoteInfo[0]
@@ -171,20 +178,14 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                       ? quoteInfo[0]['feasability_comments']
                                       : "<p>No feasibility comments available.</p>",
                                 ),
-                                Text(
-                                  quoteInfo.isNotEmpty &&
-                                          quoteInfo[0]['feasability_status'] !=
-                                              null
-                                      ? quoteInfo[0]['feasability_status']
-                                      : "No status available",
-                                ),
-                                Row(
-                                  children: [
-                                    const Text('Feasibility Attachment :'),
-                                    _buildFeasibilityAttachment(
-                                        quoteInfo[0]['feas_file_name']),
-                                  ],
-                                ),
+                                if (quoteInfo[0]['feas_file_name'] != null)
+                                  Row(
+                                    children: [
+                                      const Text('Feasibility Attachment :'),
+                                      _buildFeasibilityAttachment(
+                                          quoteInfo[0]['feas_file_name']),
+                                    ],
+                                  ),
                                 const SizedBox(height: 12),
                                 if (feasibility == null ||
                                     feasibility!['historyData'] != null)
@@ -198,7 +199,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                   ),
                                 const SizedBox(height: 8),
                                 feasibility == null ||
-                                        feasibility!['historyData'] != null
+                                        feasibility!['historyData'] == null
                                     ? const Center(
                                         child: Text(
                                             "No Feasibility history available"),

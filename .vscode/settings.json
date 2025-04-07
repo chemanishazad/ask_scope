@@ -1,5 +1,8 @@
 {
           "cSpell.words": [
                     "Insta"
-          ]
+          ],
+          "workbench.colorTheme": "Visual Studio Dark - C++",
+          "workbench.preferredDarkColorTheme": "Visual Studio Dark",
+          "workbench.iconTheme": "material-icon-theme"
 }

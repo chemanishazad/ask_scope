@@ -18,6 +18,8 @@ class ScopeDetailsCard extends ConsumerStatefulWidget {
 }
 
 class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
+  bool demoField = false;
+  TextEditingController demoIdController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     print(widget.quote['assign_id']);
@@ -76,6 +78,123 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                   ],
                 ),
               ),
+            if (widget.quote['demodone'] == '1')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Demo Id',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  Row(
+                    children: [
+                      Text(widget.quote['demo_id']),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                        onPressed: () {},
+                        label: const Text(
+                          'Demo Completed',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        icon: const Icon(
+                          Icons.check_circle_outlined,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      )
+                    ],
+                  ),
+                ],
+              ),
+            if (widget.quote['demodone'] == '0' &&
+                widget.quote['submittedtoadmin'] == 'true')
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                onPressed: () {
+                  setState(() {
+                    demoField = !demoField;
+                  });
+                },
+                label: const Text(
+                  'Mark As RC Demo Done',
+                  style: TextStyle(fontSize: 11),
+                ),
+                icon: const Icon(
+                  Icons.check_circle_outline_outlined,
+                  color: Colors.white,
+                ),
+              ),
+            if (demoField)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Enter Demo ID",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: demoIdController,
+                    decoration: InputDecoration(
+                      hintText: "Enter Demo ID",
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide:
+                            const BorderSide(color: Colors.blue, width: 1.5),
+                      ),
+                      prefixIcon: const Icon(Icons.numbers, color: Colors.blue),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                      ),
+                      onPressed: () async {
+                        String enteredDemoId = demoIdController.text;
+                        if (enteredDemoId.isNotEmpty) {
+                          print("Demo ID Saved: $enteredDemoId");
+                          print("Demo ID Saved: ${widget.quote['assign_id']}");
+                          print("Demo ID Saved: ${widget.quote['quoteid']}");
+
+                          final response =
+                              await ref.read(markAsDoneDemoProvider({
+                            'refId': widget.quote['assign_id'],
+                            'quoteId': widget.quote['quoteid'],
+                            'demoId': enteredDemoId,
+                          }).future);
+                          if (response['status'] == true) {
+                            Fluttertoast.showToast(msg: response['message']);
+                            Navigator.pop(context);
+                            setState(() {
+                              demoField = false;
+                            });
+                          } else {
+                            Fluttertoast.showToast(msg: 'Demo Not Complete');
+                          }
+                        }
+                      },
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             _buildPriceDetails(),
             if (widget.quote['relevant_file'] is List)
               _buildRelevantFilesSection(List<Map<String, dynamic>>.from(
@@ -86,7 +205,10 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                   Navigator.pushNamed(context, '/askDiscount',
                       arguments: widget.quote);
                 },
-                label: const Text('Ask Discount'),
+                label: const Text(
+                  'Ask Discount',
+                  style: TextStyle(fontSize: 11),
+                ),
                 icon: const Icon(Icons.discount_outlined, color: Colors.white),
               ),
             if (widget.quote['callrecordingpending'] == '0' ||
@@ -112,9 +234,12 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                     Fluttertoast.showToast(msg: response['message']);
                   }
                 },
-                label: Text(widget.quote['callrecordingpending'] == '1'
-                    ? 'Remove Call Recording Pending'
-                    : 'Mark Call Recording Pending'),
+                label: Text(
+                  widget.quote['callrecordingpending'] == '1'
+                      ? 'Remove Call Recording Pending'
+                      : 'Mark Call Recording Pending',
+                  style: const TextStyle(fontSize: 11),
+                ),
                 icon: const Icon(Icons.headphones, color: Colors.white),
               ),
             const SizedBox(height: 8),

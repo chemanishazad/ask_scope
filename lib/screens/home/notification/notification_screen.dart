@@ -13,7 +13,6 @@ class NotificationScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationScreenState extends ConsumerState<NotificationScreen> {
-  // Function to map API icons to Flutter icons
   IconData getNotificationIcon(String iconName) {
     switch (iconName) {
       case 'quote':
@@ -31,13 +30,19 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       case 'discount':
         return Icons.local_offer;
       default:
-        return Icons.notifications; 
+        return Icons.notifications;
     }
   }
 
-  void markAllAsRead() {
-    // TODO: Implement API call to mark all notifications as read
-    print("Marking all notifications as read...");
+  Future<void> markAllAsRead() async {
+    try {
+      print("Marking all notifications as read...");
+      final response = await ref.read(readAllNotificationProvider.future);
+      ref.invalidate(notificationGetProvider);
+      print("Response: $response");
+    } catch (e) {
+      print("Error marking notifications as read: $e");
+    }
   }
 
   @override
@@ -99,7 +104,21 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   trailing: notification['isread'] == "0"
                       ? const Icon(Icons.circle, color: Colors.red, size: 12)
                       : null,
-                  onTap: () {
+                  onTap: () async {
+                    print(notification);
+                    Navigator.pushNamed(context, '/detailsQuery', arguments: {
+                      'refId': notification['ref_id'],
+                      'quoteId': notification['quote_id'],
+                    }).then(
+                      (value) {},
+                    );
+                    final response =
+                        await ref.read(readSingleNotificationProvider({
+                      'id': notification['id'],
+                    }).future);
+                    ref.invalidate(notificationGetProvider);
+
+                    print(response);
                     print("Notification ID: ${notification['id']}");
                   },
                 ),

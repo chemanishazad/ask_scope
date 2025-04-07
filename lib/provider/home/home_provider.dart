@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart';
 
 import 'package:loop/core/utils/service.dart';
+import 'package:loop/provider/home/submitChatApiModel.dart';
 
 final contactMadeQueryProvider =
     FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
@@ -20,6 +21,56 @@ final contactMadeQueryProvider =
         'ref_id': params['refId'],
         'website': params['website'],
       },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final markAsDoneDemoProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  final field = {
+    'ref_id': params['refId'],
+    'quote_id': params['quoteId'],
+    'demoId': params['demoId'],
+  };
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/markasdemodone',
+      method: HttpMethod.$post,
+      body: field,
+    );
+    print(field);
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final requestAccessProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  final field = {
+    'assign_id': params['assignId'],
+  };
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/requestAccessfortransferredquery',
+      method: HttpMethod.$post,
+      body: field,
     );
 
     final data = jsonDecode(response.body);
@@ -98,6 +149,25 @@ final notificationGetProvider =
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
+      return jsonData;
+    } else {
+      throw Exception('Failed to fetch notifications');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final readAllNotificationProvider =
+    FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/readAllNotifications',
+      method: HttpMethod.$get,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      print(jsonData);
       return jsonData;
     } else {
       throw Exception('Failed to fetch notifications');
@@ -362,6 +432,92 @@ final transferUserProvider =
     throw Exception('Error: ${e.toString()}');
   }
 });
+final readSingleNotificationProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/readmessage',
+      method: HttpMethod.$post,
+      body: {'id': params['id']},
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+
+final submitChatProvider =
+    FutureProvider.family<Map<String, dynamic>, SubmitChatApiModel>(
+        (ref, params) async {
+  try {
+    final fields = {
+      'ref_id': params.refId,
+      'quote_id': params.quoteId,
+      'message': params.message,
+      'user_type': params.userType,
+      'category': params.category,
+      'markstatus': params.markStatus,
+      'mention_ids': params.mentionIds,
+      'mention_users': params.mentionUsers,
+    };
+    print(fields);
+
+    final List<String> fileFieldNames = ['file'];
+    Response response = await ApiMaster().fire(
+      path: '/submitUserChatNew',
+      method: HttpMethod.$formdata,
+      fileFieldNames: fileFieldNames,
+      multipartFields: fields,
+      files: params.file,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('data${data}');
+      return data;
+    } else {
+      return {'status': false, 'message': 'Failed to fetch skills'};
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final replyToChatProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    final fields = {
+      'chat_id': params['chatId'] ?? '',
+      'message': params['message'] ?? '',
+      'user_type': params['userType'] ?? '',
+    };
+
+    Response response = await ApiMaster().fire(
+      path: '/submitReply',
+      method: HttpMethod.$formdata,
+      multipartFields: fields,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('data${data}');
+      return data;
+    } else {
+      return {'status': false, 'message': 'Failed to fetch skills'};
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+
 final markCallRecordProvider =
     FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
         (ref, params) async {

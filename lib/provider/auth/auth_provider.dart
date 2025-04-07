@@ -87,6 +87,9 @@ final loginProvider =
         final loopUserEmail = loopUser['fld_email'];
         final loopUserType = loopUser['fld_admin_type'];
         final loopUserToken = loopUser['mobtoken'];
+        final scopeadmin = loopUser['scopeadmin'];
+        final transferaccess = loopUser['transferaccess'];
+        final tl = loopUser['tl'];
 
         // Insta User Details
         final instaUserId = instaUser['id'];
@@ -105,6 +108,9 @@ final loginProvider =
         await prefs.setString('loopUserEmail', loopUserEmail);
         await prefs.setString('loopUserType', loopUserType);
         await prefs.setString('loopUserToken', loopUserToken);
+        await prefs.setString('scopeadmin', scopeadmin);
+        await prefs.setString('transferaccess', transferaccess);
+        await prefs.setString('tl', tl);
 
         // Insta User Data
         await prefs.setString('instaUserId', instaUserId);
