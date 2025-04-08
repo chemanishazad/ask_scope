@@ -412,8 +412,7 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
   Widget _buildPlanDescription(String? planJson, String? wordCountJson) {
     if (planJson == null || planJson.isEmpty) {
       return const Text(
-        "No plan description available",
-        style: TextStyle(fontSize: 14, color: Colors.black87),
+        "",
       );
     }
 

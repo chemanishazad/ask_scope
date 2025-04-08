@@ -11,6 +11,7 @@ import 'package:loop/screens/home/details/details_query.dart';
 import 'package:loop/screens/home/details/scope_card.dart';
 import 'package:loop/screens/home/details/widget/ask_discount_screen.dart';
 import 'package:loop/screens/home/notification/notification_screen.dart';
+import 'package:loop/screens/userRequest/user_request_screen.dart';
 
 class AppRoutes {
   static final Map<String, Widget Function(BuildContext)> routes = {
@@ -26,5 +27,6 @@ class AppRoutes {
     '/editScopeScreen': (context) => const EditScopeScreen(),
     '/feasibilityDetails': (context) => const FeasibilityDetailsScreen(),
     '/askDiscount': (context) => const AskDiscountScreen(),
+    '/userRequest': (context) => const UserRequestScreen(),
   };
 }

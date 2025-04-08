@@ -130,7 +130,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListTile(
               leading: const Icon(Icons.account_circle_outlined),
               title: const Text("User Request"),
-              onTap: () {},
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/userRequest');
+              },
             ),
           ),
         if (transferAccess == '1')
@@ -234,9 +237,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncData = ref.watch(notificationGetProvider);
-    print(scopeToken);
-    print(transferAccess);
-    print(tl);
+    // print('scopeToken$scopeToken');
+    // print('transferAccess$transferAccess');
+    // print('tl$tl');
 
     return Scaffold(
       appBar: AppBar(

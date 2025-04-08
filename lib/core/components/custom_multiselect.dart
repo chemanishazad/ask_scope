@@ -77,7 +77,7 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
       child: Container(
         width: widget.dropdownWidth,
         height: widget.dropdownHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
@@ -99,7 +99,11 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
+            const Padding(
+              padding: EdgeInsets.only(right: 4.0),
+              child: Icon(Icons.arrow_drop_down_outlined,
+                  color: Colors.grey, size: 24),
+            ),
           ],
         ),
       ),

@@ -334,6 +334,62 @@ final serviceDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
     throw Exception('Error: ${e.toString()}');
   }
 });
+final tlUserDropdownProvider = FutureProvider.autoDispose
+    .family<Map<String, Map<String, String>>, String>((ref, assignUsers) async {
+  final field = {
+    'assign_users': assignUsers,
+  };
+
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/tlUsers',
+      method: HttpMethod.$post,
+      auth: false,
+      body: field,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['status'] == true && data['users'] is List) {
+        // Convert the List<Map> to Map<String, Map> format
+        final usersMap = <String, Map<String, String>>{};
+        for (final user in data['users']) {
+          usersMap[user['id']] = {
+            'fld_first_name': user['fld_first_name'],
+            'fld_last_name': user['fld_last_name'],
+          };
+        }
+        return usersMap;
+      } else {
+        throw Exception('Invalid data format from API');
+      }
+    } else {
+      throw Exception('Failed to load users: ${response.statusCode}');
+    }
+  } catch (e) {
+    throw Exception('Error loading users: ${e.toString()}');
+  }
+});
+final tlAssignedUserDropdownProvider =
+    FutureProvider<List<dynamic>>((ref) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getAllassignedUsersfortl',
+      method: HttpMethod.$get,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      print('object$jsonData');
+
+      return jsonData['users'];
+    } else {
+      throw Exception('Failed to fetch jobs');
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
 final tagsDropdownProvider = FutureProvider<List<dynamic>>((ref) async {
   try {
     Response response = await ApiMaster().fire(
@@ -535,6 +591,38 @@ final markCallRecordProvider =
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final tlScopeProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/listAskForScopeForTl',
+      method: HttpMethod.$post,
+      body: {
+        'assign_users': params['assign_users'],
+        'current_tl': params['current_tl'],
+        'start_date': params['start_date'],
+        'end_date': params['end_date'],
+        'feasability_status': params['feasability_status'],
+        'ptp': params['ptp'],
+        'ref_id': params['refId'],
+        'user_id': params['user_id'],
+        'service_name': params['service_name'],
+        'status': params['status'],
+        'tags': params['tags'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
       return data;
     } else {
       return data;
