@@ -22,7 +22,7 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
   TextEditingController demoIdController = TextEditingController();
   @override
   Widget build(BuildContext context) {
-    print(widget.quote['assign_id']);
+    // print(widget.quote['quote_status']);
     return Container(
         width: double.infinity,
         decoration: cardDecoration(context: context),
@@ -109,6 +109,7 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                   ),
                 ],
               ),
+            _buildPriceDetails(),
             if (widget.quote['demodone'] == '0' &&
                 widget.quote['submittedtoadmin'] == 'true')
               ElevatedButton.icon(
@@ -195,7 +196,6 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                   ),
                 ],
               ),
-            _buildPriceDetails(),
             if (widget.quote['relevant_file'] is List)
               _buildRelevantFilesSection(List<Map<String, dynamic>>.from(
                   widget.quote['relevant_file'])),
@@ -282,19 +282,16 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
   }
 
   Widget _buildPriceDetails() {
-    List<String>? initialPrices = widget.quote['quote_price'] != null
-        ? (widget.quote['quote_price'] as String).split(',')
-        : null;
-    List<String>? discountPrices = widget.quote['discount_price'] != null
-        ? (widget.quote['discount_price'] as String).split(',')
-        : null;
-    List<String>? finalPrices = widget.quote['final_price'] != null
-        ? (widget.quote['final_price'] as String).split(',')
-        : null;
-
     List<String> selectedPlans = widget.quote['plan'] != null
         ? (widget.quote['plan'] as String).split(',')
         : [];
+
+    List<String>? initialPrices =
+        widget.quote['quote_price']?.toString().split(',');
+    List<String>? discountPrices =
+        widget.quote['discount_price']?.toString().split(',');
+    List<String>? finalPrices =
+        widget.quote['final_price']?.toString().split(',');
 
     Map<String, dynamic> comments = {};
     if (widget.quote['new_comments'] != null) {
@@ -306,8 +303,6 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
       }
     }
 
-    List<String> allPlans = ["Basic", "Standard", "Advanced"];
-
     List<String> orderedFinalPrices = List.filled(selectedPlans.length, "N/A");
     for (int i = 0;
         i < selectedPlans.length && i < (finalPrices?.length ?? 0);
@@ -315,8 +310,12 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
       orderedFinalPrices[i] = finalPrices![i];
     }
 
-    Widget buildPriceRow(String title, List<String>? prices, Color bgColor,
-        {bool strikeThrough = false, bool filterByPlan = false}) {
+    Widget buildPriceRow({
+      required String title,
+      required List<String>? prices,
+      required Color bgColor,
+      required bool checkStrikeWithDiscount,
+    }) {
       if (prices == null) return const SizedBox.shrink();
 
       return Container(
@@ -336,10 +335,20 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
             const SizedBox(height: 6),
             Column(
               children: List.generate(selectedPlans.length, (index) {
-                String plan = selectedPlans[index];
-                String comment = comments[plan] ?? "No comments available";
-                String priceText =
-                    index < prices.length ? prices[index] : 'N/A';
+                final plan = selectedPlans[index];
+                final comment = comments[plan] ?? "No comments available";
+                final priceText =
+                    (index < prices.length) ? prices[index] : 'N/A';
+
+                // STRIKE THROUGH if discount exists and non-empty for this plan
+                bool shouldStrike = false;
+                if (checkStrikeWithDiscount &&
+                    discountPrices != null &&
+                    index < discountPrices.length &&
+                    discountPrices[index].trim().isNotEmpty &&
+                    discountPrices[index] != '0') {
+                  shouldStrike = true;
+                }
 
                 return Container(
                   padding:
@@ -366,7 +375,7 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               color: Colors.black,
-                              decoration: strikeThrough
+                              decoration: shouldStrike
                                   ? TextDecoration.lineThrough
                                   : TextDecoration.none,
                             ),
@@ -396,15 +405,26 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
       children: [
         if (initialPrices != null)
           buildPriceRow(
-              "Initial Plan Price", initialPrices, Colors.grey.shade200,
-              strikeThrough: true),
-        if (discountPrices != null)
+            title: "Initial Plan Price",
+            prices: initialPrices,
+            bgColor: Colors.grey.shade200,
+            checkStrikeWithDiscount: true,
+          ),
+        if (discountPrices != null &&
+            discountPrices.any((e) => e.trim().isNotEmpty))
           buildPriceRow(
-              "Discounted Price", discountPrices, Colors.grey.shade400,
-              strikeThrough: true, filterByPlan: true),
+            title: "Discounted Price",
+            prices: discountPrices,
+            bgColor: Colors.grey.shade400,
+            checkStrikeWithDiscount: false,
+          ),
         if (finalPrices != null)
           buildPriceRow(
-              "Final Price", orderedFinalPrices, Colors.amber.shade400),
+            title: "Final Price",
+            prices: orderedFinalPrices,
+            bgColor: Colors.amber.shade400,
+            checkStrikeWithDiscount: false,
+          ),
       ],
     );
   }

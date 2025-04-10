@@ -139,7 +139,9 @@ class _UserRequestScreenState extends ConsumerState<UserRequestScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pushNamed(context, '/addUserScreen');
+        },
         child: const Icon(Icons.add),
       ),
       body: isLoading

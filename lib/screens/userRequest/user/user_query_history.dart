@@ -3,20 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/core/const/styles.dart';
-import 'package:loop/provider/auth/auth_provider.dart';
 import 'package:loop/provider/home/home_provider.dart';
 import 'package:loop/screens/home/filter_screen.dart';
 import 'package:lottie/lottie.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
-
+class UserQueryHistory extends ConsumerStatefulWidget {
+  const UserQueryHistory({super.key});
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _HomeScreenState();
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _UserQueryHistoryState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _UserQueryHistoryState extends ConsumerState<UserQueryHistory> {
   List<Map<String, dynamic>> allClientData = [];
   List<Map<String, dynamic>> displayedClientData = [];
   int currentPage = 1;
@@ -28,20 +26,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String transferAccess = '';
   String tl = '';
 
+  String userId = '';
+  String userType = '';
+  String name = '';
+
   @override
   void initState() {
     super.initState();
-    contactMadeQuery();
-    ref.refresh(notificationGetProvider);
-    loginData();
-  }
 
-  Future<void> loginData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      scopeToken = prefs.getString('scopeadmin') ?? '';
-      transferAccess = prefs.getString('transferaccess') ?? '';
-      tl = prefs.getString('tl') ?? '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+      if (user != null && user.isNotEmpty) {
+        print('User Data: $user');
+        setState(() {
+          userId = user['user_id'] ?? '';
+          userType = user['user_type'] ?? '';
+          name = user['name'] ?? '';
+        });
+        contactMadeQuery();
+      } else {
+        print('No user data found or invalid format.');
+      }
     });
   }
 
@@ -50,15 +57,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() {
       isLoading = true;
     });
-    final prefs = await SharedPreferences.getInstance();
-    String? instaId = prefs.getString('instaUserId');
-    String? userType = prefs.getString('instaUserType');
-    String? teamId = prefs.getString('instaTeamId');
 
     final response = await ref.read(contactMadeQueryProvider({
-      'userId': instaId ?? '',
-      'userType': userType ?? '',
-      'teamId': teamId ?? '',
+      'userId': userId,
+      'userType': userType,
+      'teamId': '',
       'searchKeywords': searchKeywords,
       'refId': refId,
       'website': website,
@@ -113,63 +116,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         appBarPosition.dy + appBarRenderBox.size.height,
       ),
       items: [
-        PopupMenuItem(
-          value: 'filter',
-          child: ListTile(
-            leading: const Icon(Icons.filter_alt),
-            title: const Text("Filter"),
-            onTap: () {
-              Navigator.pop(context);
-              _showFilterModal();
-            },
-          ),
+        _buildMenuItem(
+          context,
+          icon: Icons.filter_alt_outlined,
+          text: 'Filter',
+          onTap: () {
+            Navigator.pop(context);
+            _showFilterModal();
+          },
         ),
-        if (tl == '1')
-          PopupMenuItem(
-            value: 'userRequest',
-            child: ListTile(
-              leading: const Icon(Icons.account_circle_outlined),
-              title: const Text("User Request"),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/userRequest');
-              },
-            ),
-          ),
-        if (transferAccess == '1')
-          PopupMenuItem(
-            value: 'transferAccess',
-            child: ListTile(
-              leading: const Icon(Icons.transfer_within_a_station),
-              title: const Text("Transfer Request"),
-              onTap: () {},
-            ),
-          ),
-        if (scopeToken == '1')
-          PopupMenuItem(
-            value: 'scopeRequest',
-            child: ListTile(
-              leading: const Icon(Icons.on_device_training_sharp),
-              title: const Text("Scope Request"),
-              onTap: () {},
-            ),
-          ),
-        PopupMenuItem(
-          value: 'logout',
-          child: ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text("Logout"),
-            onTap: () async {
-              Navigator.pop(context);
-              await ref.read(authNotifierProvider.notifier).logout(context);
-            },
-          ),
+        _buildMenuItem(
+          context,
+          icon: Icons.summarize_outlined,
+          text: 'Summary',
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/userSummaryScreen',
+                arguments: userId);
+          },
+        ),
+        _buildMenuItem(
+          context,
+          icon: Icons.person_add_alt_1_outlined,
+          text: 'Following',
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/userFollowingScreen',
+                arguments: userId);
+          },
+        ),
+        _buildMenuItem(
+          context,
+          icon: Icons.assignment_turned_in_outlined,
+          text: 'Feasibility Request',
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/userFeasibilityScreen',
+                arguments: userId);
+          },
         ),
       ],
       color: Colors.white,
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
+  PopupMenuItem _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return PopupMenuItem(
+      value: text,
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black87),
+        title: Text(text, style: const TextStyle(color: Colors.black87)),
+        onTap: onTap,
       ),
     );
   }
@@ -241,7 +247,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncData = ref.watch(notificationGetProvider);
     // print('scopeToken$scopeToken');
     // print('transferAccess$transferAccess');
     // print('tl$tl');
@@ -252,30 +257,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text("Query History",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
-          asyncData.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) =>
-                  Center(child: Text("Error: $error")),
-              data: (notificationData) {
-                final int count = notificationData['unread_count'];
-
-                return IconButton(
-                  icon: Badge(
-                    label: Text(
-                      count.toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    child: const Icon(Icons.notifications, color: Colors.white),
-                  ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/notificationScreen').then(
-                      (value) {
-                        ref.invalidate(notificationGetProvider);
-                      },
-                    );
-                  },
-                );
-              }),
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () => _showMenuOptions(context),

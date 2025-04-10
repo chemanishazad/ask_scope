@@ -121,6 +121,75 @@ final summaryProvider = FutureProvider<List<dynamic>>((ref) async {
     throw Exception('Error: ${e.toString()}');
   }
 });
+final userSummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  final field = {
+    'user_id': params['userId'],
+  };
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getQuoteSummaryWithId',
+      method: HttpMethod.$post,
+      body: field,
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final userFollowingProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  final field = {
+    'user_id': params['userId'],
+  };
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getFollowingTasksWithId',
+      method: HttpMethod.$post,
+      body: field,
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final userFeasibilityProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  final field = {
+    'user_id': params['userId'],
+  };
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getAllFeasabilityAssignedToUserWithId',
+      method: HttpMethod.$post,
+      body: field,
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
 final followingProvider = FutureProvider<List<dynamic>>((ref) async {
   try {
     Response response = await ApiMaster().fire(
@@ -380,9 +449,8 @@ final tlAssignedUserDropdownProvider =
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
-      print('object$jsonData');
 
-      return jsonData['users'];
+      return jsonData['data'];
     } else {
       throw Exception('Failed to fetch jobs');
     }
