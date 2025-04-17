@@ -2,6 +2,8 @@ import 'dart:io';
 
 class ScopeUploadModel {
   final String refId;
+  final String creatorUserName;
+  final String creatorUserId;
   final String currency;
   final String otherCurrency;
   final String serviceName;
@@ -26,6 +28,8 @@ class ScopeUploadModel {
   // Constructor
   ScopeUploadModel({
     required this.refId,
+    required this.creatorUserName,
+    required this.creatorUserId,
     required this.otherCurrency,
     required this.currency,
     required this.serviceName,

@@ -105,26 +105,26 @@ final loginProvider =
         await prefs.setBool('isLoggedIn', true);
 
         // Loop User Data
-        await prefs.setString('loopUserId', loopUserId);
-        await prefs.setString('loopUserName', loopUserName);
-        await prefs.setString('loopUserEmail', loopUserEmail);
-        await prefs.setString('loopUserType', loopUserType);
-        await prefs.setString('loopUserToken', loopUserToken);
-        await prefs.setString('scopeadmin', scopeadmin);
-        await prefs.setString('transferaccess', transferaccess);
-        await prefs.setString('tl', tl);
-        await prefs.setString('tl_users', tl_users);
-        await prefs.setString('fld_email', fld_email);
+        await prefs.setString('loopUserId', loopUserId ?? '');
+        await prefs.setString('loopUserName', loopUserName ?? '');
+        await prefs.setString('loopUserEmail', loopUserEmail ?? '');
+        await prefs.setString('loopUserType', loopUserType ?? '');
+        await prefs.setString('loopUserToken', loopUserToken ?? '');
+        await prefs.setString('scopeadmin', scopeadmin ?? '');
+        await prefs.setString('transferaccess', transferaccess ?? '');
+        await prefs.setString('tl', tl ?? '');
+        await prefs.setString('tl_users', tl_users ?? '');
+        await prefs.setString('fld_email', fld_email ?? '');
 
         // Insta User Data
-        await prefs.setString('instaUserId', instaUserId);
-        await prefs.setString('instaUserName', instaUserName);
-        await prefs.setString('instaUserEmail', instaUserEmail);
-        await prefs.setString('instaUserType', instaUserType);
-        await prefs.setString('instaUserCategories', instaUserCategories);
-        await prefs.setString('instaTeamId', instaTeamId);
+        await prefs.setString('instaUserId', instaUserId ?? '');
+        await prefs.setString('instaUserName', instaUserName ?? '');
+        await prefs.setString('instaUserEmail', instaUserEmail ?? '');
+        await prefs.setString('instaUserType', instaUserType ?? '');
+        await prefs.setString('instaUserCategories', instaUserCategories ?? '');
+        await prefs.setString('instaTeamId', instaTeamId ?? '');
 
-        ApiMaster.setToken(loopUserToken);
+        ApiMaster.setToken(loopUserToken ?? '');
 
         print(
             'Login Successful: LoopUser ID - $loopUserId, InstaUser ID - $instaUserId');

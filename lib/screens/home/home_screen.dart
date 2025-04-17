@@ -142,7 +142,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListTile(
               leading: const Icon(Icons.transfer_within_a_station),
               title: const Text("Transfer Request"),
-              onTap: () {},
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/transferRequest').then(
+                  (value) {
+                    contactMadeQuery();
+                  },
+                );
+              },
             ),
           ),
         if (scopeToken == '1')
@@ -151,7 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListTile(
               leading: const Icon(Icons.on_device_training_sharp),
               title: const Text("Scope Request"),
-              onTap: () {},
+              onTap: () {
+                Navigator.pushNamed(context, '/scopeRequest');
+              },
             ),
           ),
         PopupMenuItem(

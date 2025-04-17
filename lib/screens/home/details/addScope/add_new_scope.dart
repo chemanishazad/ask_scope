@@ -107,6 +107,8 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
   }
 
   String? id;
+  String? userId;
+  String? userName;
   String? name;
   @override
   void didChangeDependencies() {
@@ -115,9 +117,12 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
+      print('object$args');
       setState(() {
-        id = args['refId'];
-        name = args['clientName'];
+        id = args['assign_id'];
+        userId = args['user_id'];
+        userName = '${args['fld_first_name']} ${args['fld_last_name']}';
+        name = args['client_name'];
       });
     }
   }
@@ -224,6 +229,8 @@ class _AddNewScopeState extends ConsumerState<AddNewScope>
 
       ScopeUploadModel scopeUploadModel = ScopeUploadModel(
         refId: id ?? '',
+        creatorUserId: userId ?? '',
+        creatorUserName: userName ?? '',
         clientName: name ?? '',
         currency: selectedCurrencyId ?? '',
         otherCurrency: customCurrencyType ?? '',

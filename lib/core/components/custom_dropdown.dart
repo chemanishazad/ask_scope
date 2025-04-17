@@ -64,9 +64,9 @@ class _CustomDropDownState extends State<CustomDropDown> {
                 isExpanded: true,
                 hint: Text(
                   widget.title ?? 'Please select',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  ), // Themed hint text style
+                  // style: theme.textTheme.bodySmall?.copyWith(
+                  //   color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  // ), // Themed hint text style
                 ),
                 value: _selectedItem,
                 icon: const Icon(

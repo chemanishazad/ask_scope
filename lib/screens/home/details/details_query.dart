@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loop/core/const/palette.dart';
 import 'package:loop/provider/home/home_provider.dart';
 import 'package:loop/screens/home/details/widget/chat_screen.dart';
-import 'package:loop/screens/home/details/widget/details_card.dart';
 import 'package:loop/screens/home/details/widget/feasibility_history.dart';
 import 'package:loop/screens/home/details/widget/query_history.dart';
 import 'package:loop/screens/home/details/widget/scope_details.dart';
@@ -142,7 +141,7 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                     ScopeDetailsCard(quote: quoteInfo[0]),
                                     const SizedBox(height: 12),
                                     history == null ||
-                                            history!['historyData'].isEmpty
+                                            history!['historyData'] == null
                                         ? const Center(
                                             child: Text(
                                                 "No communication history available"),

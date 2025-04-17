@@ -258,6 +258,7 @@ final queryDetailsProvider =
         method: HttpMethod.$get,
         queryParameters: param,
       );
+      print('response$response');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
@@ -439,6 +440,34 @@ final tlUserDropdownProvider = FutureProvider.autoDispose
     throw Exception('Error loading users: ${e.toString()}');
   }
 });
+final tlTransferRequestProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, users) async {
+  final field = {
+    'users': users,
+  };
+
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/getalltransferrequestsfortl',
+      method: HttpMethod.$post,
+      auth: false,
+      body: field,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['status'] == true) {
+        return data;
+      } else {
+        throw data;
+      }
+    } else {
+      throw Exception('Failed to load users: ${response.statusCode}');
+    }
+  } catch (e) {
+    throw Exception('Error loading users: ${e.toString()}');
+  }
+});
 final tlAssignedUserDropdownProvider =
     FutureProvider<List<dynamic>>((ref) async {
   try {
@@ -548,6 +577,30 @@ final transferUserProvider =
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       print('data${data}');
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final approveTransferUserProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/approvetransferrequest',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['refId'],
+        'status': params['status'],
+        'admin_id': params['userId'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
       return data;
     } else {
       return data;
@@ -684,6 +737,40 @@ final tlScopeProvider =
         'ref_id': params['refId'],
         'user_id': params['user_id'],
         'service_name': params['service_name'],
+        'status': params['status'],
+        'tags': params['tags'],
+      },
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      return data;
+    }
+  } catch (e) {
+    throw Exception('Error: ${e.toString()}');
+  }
+});
+final tlScopeRequestProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>(
+        (ref, params) async {
+  try {
+    Response response = await ApiMaster().fire(
+      path: '/listAskForScopeForTl',
+      method: HttpMethod.$post,
+      body: {
+        'ref_id': params['ref_id'],
+        'scope_id': params['scope_id'],
+        'search_keywords': params['search_keywords'],
+        'service_name': params['service_name'],
+        'subject_area': params['subject_area'],
+        'feasability_status': params['feasability_status'],
+        'userid': params['userid'],
+        'ptp': params['ptp'],
+        'callrecordingpending': params['callrecordingpending'],
+        'start_date': params['start_date'],
+        'end_date': params['end_date'],
         'status': params['status'],
         'tags': params['tags'],
       },

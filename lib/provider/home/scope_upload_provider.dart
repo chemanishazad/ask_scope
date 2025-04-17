@@ -17,6 +17,8 @@ final addNewScopeProvider =
     final List<String> fileFieldNames = [];
     final Map<String, String> fields = {
       'ref_id': params.refId,
+      'creater_user_id': params.creatorUserId,
+      'creater_user_name': params.creatorUserName,
       'currency': params.currency,
       'other_currency': params.otherCurrency,
       'service_name': params.serviceName,

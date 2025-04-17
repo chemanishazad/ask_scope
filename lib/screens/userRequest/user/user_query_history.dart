@@ -31,6 +31,12 @@ class _UserQueryHistoryState extends ConsumerState<UserQueryHistory> {
   String name = '';
 
   @override
+  void didChangeDependencies() {
+    // TODO: implement didChangeDependencies
+    super.didChangeDependencies();
+  }
+
+  @override
   void initState() {
     super.initState();
 

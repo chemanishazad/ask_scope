@@ -11,6 +11,9 @@ import 'package:loop/screens/home/details/details_query.dart';
 import 'package:loop/screens/home/details/scope_card.dart';
 import 'package:loop/screens/home/details/widget/ask_discount_screen.dart';
 import 'package:loop/screens/home/notification/notification_screen.dart';
+import 'package:loop/screens/scopeRequest/scope_request_screen.dart';
+import 'package:loop/screens/transferRequest/request_details_screen.dart';
+import 'package:loop/screens/transferRequest/transfer_request_screen.dart';
 import 'package:loop/screens/userRequest/add_user_screen.dart';
 import 'package:loop/screens/userRequest/user/user_feasibility_screen.dart';
 import 'package:loop/screens/userRequest/user/user_following_screen.dart';
@@ -38,5 +41,8 @@ class AppRoutes {
     '/userSummaryScreen': (context) => const UserSummaryScreen(),
     '/userFollowingScreen': (context) => const UserFollowingScreen(),
     '/userFeasibilityScreen': (context) => const UserFeasibilityScreen(),
+    '/transferRequest': (context) => const TransferRequestScreen(),
+    '/requestDetails': (context) => const RequestDetailsScreen(),
+    '/scopeRequest': (context) => const ScopeRequestScreen(),
   };
 }

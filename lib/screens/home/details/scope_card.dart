@@ -65,10 +65,11 @@ class _ScopeCardState extends ConsumerState<ScopeCard> {
       floatingActionButton: quotes.isNotEmpty
           ? FloatingActionButton.small(
               onPressed: () {
-                Navigator.pushNamed(context, '/addNewScope', arguments: {
-                  'clientName': quotes[0]['client_name'],
-                  'refId': quotes[0]['assign_id'],
-                });
+                Navigator.pushNamed(
+                  context,
+                  '/addNewScope',
+                  arguments: quotes[0],
+                );
               },
               child: const Icon(Icons.add),
             )
