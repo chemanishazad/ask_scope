@@ -45,7 +45,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                 // Title
                 Text(
-                  'Sign In To Your Account',
+                  'Sign in to your account',
                   style: Theme.of(context).textTheme.displaySmall!.copyWith(
                         fontSize: 18.sp,
                         color: Palette.themeColor,
@@ -70,18 +70,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   obscureText: true,
                 ),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    child: const Text(
-                      'Forgot Password',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/forgotPasswordPage');
-                    },
-                  ),
-                ),
                 // Login Button
                 ElevatedButton(
                   onPressed: () async {
