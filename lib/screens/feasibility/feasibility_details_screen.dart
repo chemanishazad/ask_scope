@@ -231,6 +231,37 @@ class _FeasibilityDetailsScreenState
                             _buildInfoRow('Old Plan', quote!['old_plan']),
                           _buildPlanDescription(
                               quote!['plan_comments'], quote!['word_counts']),
+                          if (quote?['client_academic_level'] != null ||
+                              quote?['results_section'] != null)
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                border:
+                                    Border.all(color: const Color(0xFFE0E0E0)),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 6, horizontal: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (quote?['client_academic_level'] != null)
+                                    _buildDetailRow(
+                                      title: 'Academic Level',
+                                      value: quote?['client_academic_level'],
+                                      icon: Icons.school_outlined,
+                                    ),
+                                  if (quote?['results_section'] != null)
+                                    _buildDetailRow(
+                                      title: 'Results Section',
+                                      value: quote?['results_section'],
+                                      icon: Icons.assignment_outlined,
+                                    ),
+                                ],
+                              ),
+                            ),
                           if (quote!['comments'] != null &&
                               quote!['comments'].isNotEmpty)
                             Padding(
@@ -281,9 +312,12 @@ class _FeasibilityDetailsScreenState
                                       msg: response['message']);
                                 }
                               },
-                              label: Text(quote?['callrecordingpending'] == '1'
-                                  ? 'Remove Call Recording Pending'
-                                  : 'Mark Call Recording Pending'),
+                              label: Text(
+                                quote?['callrecordingpending'] == '1'
+                                    ? 'Remove Call Recording Pending'
+                                    : 'Mark Call Recording Pending',
+                                style: const TextStyle(fontSize: 10),
+                              ),
                               icon: const Icon(Icons.headphones,
                                   color: Colors.white),
                             ),
@@ -359,7 +393,10 @@ class _FeasibilityDetailsScreenState
                                 Icons.photo_filter_sharp,
                                 color: Colors.white,
                               ),
-                              label: const Text("Select Files"),
+                              label: const Text(
+                                "Select Files",
+                                style: const TextStyle(fontSize: 10),
+                              ),
                             ),
                           if (quote?['feasability_status'] != 'Completed')
                             if (selectedFiles.isNotEmpty)
@@ -438,6 +475,47 @@ class _FeasibilityDetailsScreenState
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildDetailRow({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF2196F3)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF616161),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

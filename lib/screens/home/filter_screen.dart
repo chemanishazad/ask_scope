@@ -27,7 +27,7 @@ class _FilterBarState extends State<FilterBar> {
         const SizedBox(height: 15),
         Align(
           alignment: Alignment.centerRight,
-          child: ElevatedButton.icon(
+          child: ElevatedButton(
             onPressed: () {
               widget.onFilterApplied(
                 refIdController.text,
@@ -35,16 +35,14 @@ class _FilterBarState extends State<FilterBar> {
                 selectedWebsite == "Select Website" ? "" : selectedWebsite,
               );
             },
-            icon: const Icon(Icons.filter_alt_rounded, size: 18),
-            label: const Text("Apply"),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
+            child: const Text("Apply"),
           ),
         ),
       ],

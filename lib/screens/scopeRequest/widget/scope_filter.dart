@@ -166,7 +166,7 @@ class ScopeFilterState extends ConsumerState<ScopeFilter> {
             const SizedBox(height: 14),
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: () {
                   String formatDate(DateTime? date) {
                     if (date == null) return '';
@@ -190,11 +190,7 @@ class ScopeFilterState extends ConsumerState<ScopeFilter> {
                     'end_date': formatDate(selectedDateRange?.end),
                   });
                 },
-                icon: const Icon(Icons.filter_alt_outlined, size: 18),
-                label:
-                    const Text("Apply Filter", style: TextStyle(fontSize: 12)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -202,6 +198,8 @@ class ScopeFilterState extends ConsumerState<ScopeFilter> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child:
+                    const Text("Apply Filter", style: TextStyle(fontSize: 12)),
               ),
             )
           ],

@@ -36,11 +36,11 @@ class _FeasibilityScreenState extends ConsumerState<FeasibilityScreen> {
         data: (data) {
           final items = data['data'];
 
-          if (data['status'] == false) {
+          if (items == null) {
             return const Center(
               child: Text(
-                'No feasibility data available.',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                'No quotes found for this user',
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
             );
           }

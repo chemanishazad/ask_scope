@@ -148,7 +148,7 @@ class _FilterUserState extends ConsumerState<FilterUser> {
             const SizedBox(height: 14),
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: () {
                   String formatDate(DateTime? date) {
                     if (date == null) return '';
@@ -169,8 +169,7 @@ class _FilterUserState extends ConsumerState<FilterUser> {
                     'end_date': formatDate(selectedDateRange?.end),
                   });
                 },
-                icon: const Icon(Icons.filter_alt_outlined, size: 18),
-                label:
+                child:
                     const Text("Apply Filter", style: TextStyle(fontSize: 12)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
