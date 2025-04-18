@@ -111,7 +111,7 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
                       title('Currency'),
                       CustomDropDown(
                         dropdownWidth: MediaQuery.sizeOf(context).width / 2.2,
-                        icon: Icons.currency_rupee_rounded,
+                        icon: Icons.money,
                         items: currencyMap.keys.toList(),
                         title: 'Select Currency',
                         onSelectionChanged: widget.onCurrencyChanged,
@@ -188,6 +188,8 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   title('Subject Area'),
                   CustomDropDown(
@@ -234,7 +236,7 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
             ],
           ),
           const SizedBox(height: 12),
-          title('Select Level'),
+          title('Select Plan'),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -258,10 +260,10 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
           if (widget.isBasicSelected) ...[
+            const SizedBox(height: 8),
             const Text(
-              "Add comment for Basic Plan (optional)",
+              "Add comment for Basic Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -322,10 +324,10 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
               ],
             )
           ],
-          const SizedBox(height: 8),
           if (widget.isStandardSelected) ...[
+            const SizedBox(height: 8),
             const Text(
-              "Add comment for Standard Plan (optional)",
+              "Add comment for Standard Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -386,10 +388,10 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
               ],
             )
           ],
-          const SizedBox(height: 8),
           if (widget.isAdvancedSelected) ...[
+            const SizedBox(height: 8),
             const Text(
-              "Add comment for Advanced Plan (optional)",
+              "Add comment for Advanced Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -559,8 +561,11 @@ class _AskForScopeTabState extends ConsumerState<AskForScopeTab> {
   Widget title(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 4),
-      child: Text(
-        title,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+        ),
       ),
     );
   }

@@ -37,48 +37,53 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
     Future.microtask(() async {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      print(args);
 
       if (args != null) {
-        try {
-          final fetchedDetails = await ref.read(queryDetailsProvider({
-            'refId': args['refId'],
-            'quoteId': args['quoteId'],
-          }).future);
-
-          final historyData = await ref.read(quoteHistoryProvider({
-            'refId': args['refId'],
-            'quoteId': args['quoteId'],
-          }).future);
-
-          final feasibilityData = await ref.read(feasibilityHistoryProvider({
-            'refId': args['refId'],
-            'quoteId': args['quoteId'],
-          }).future);
-
-          final queryChat = await ref.read(queryChatProvider({
-            'quoteId': args['quoteId'],
-          }).future);
-
-          setState(() {
-            refId = args['refId'];
-            quoteId = args['quoteId'];
-
-            chatData = queryChat;
-            details = fetchedDetails;
-            history = historyData;
-            feasibility = feasibilityData;
-            // id = fetchedDetails['quoteInfo']['user_id'];
-            isLoading = false;
-          });
-        } catch (error) {
-          setState(() {
-            errorMessage = error.toString();
-            isLoading = false;
-          });
-        }
+        refId = args['refId'];
+        quoteId = args['quoteId'];
+        await refreshQueryDetails();
       }
     });
+  }
+
+  Future<void> refreshQueryDetails() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final fetchedDetails = await ref.read(queryDetailsProvider({
+        'refId': refId,
+        'quoteId': quoteId,
+      }).future);
+
+      final historyData = await ref.read(quoteHistoryProvider({
+        'refId': refId,
+        'quoteId': quoteId,
+      }).future);
+
+      final feasibilityData = await ref.read(feasibilityHistoryProvider({
+        'refId': refId,
+        'quoteId': quoteId,
+      }).future);
+
+      // final queryChat = await ref.read(queryChatProvider({
+      //   'quoteId': quoteId,
+      // }).future);
+
+      setState(() {
+        details = fetchedDetails;
+        history = historyData;
+        feasibility = feasibilityData;
+        // chatData = queryChat;
+        isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        errorMessage = error.toString();
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -138,7 +143,10 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    ScopeDetailsCard(quote: quoteInfo[0]),
+                                    ScopeDetailsCard(
+                                      quote: quoteInfo[0],
+                                      onDemoSaved: refreshQueryDetails,
+                                    ),
                                     const SizedBox(height: 12),
                                     history == null ||
                                             history!['historyData'] == null
@@ -169,41 +177,67 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
                                     color: Colors.black87,
                                   ),
                                 ),
-                                Html(
-                                  data: quoteInfo.isNotEmpty &&
-                                          quoteInfo[0]
-                                                  ['feasability_comments'] !=
-                                              null
-                                      ? quoteInfo[0]['feasability_comments']
-                                      : "<p>No feasibility comments available.</p>",
-                                ),
-                                if (quoteInfo[0]['feas_file_name'] != null)
-                                  Row(
-                                    children: [
-                                      const Text('Feasibility Attachment :'),
-                                      _buildFeasibilityAttachment(
-                                          quoteInfo[0]['feas_file_name']),
-                                    ],
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                const SizedBox(height: 12),
-                                if (feasibility == null ||
-                                    feasibility!['historyData'] != null)
-                                  const Text(
-                                    'Feasibility History',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
+                                  child: Html(
+                                    data: quoteInfo.isNotEmpty &&
+                                            quoteInfo[0]
+                                                    ['feasability_comments'] !=
+                                                null
+                                        ? quoteInfo[0]['feasability_comments']
+                                        : "<p>No feasibility comments available.</p>",
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                if (quoteInfo[0]['feas_file_name'] != null)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        const Text(
+                                          'Feasibility Attachment:',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _buildFeasibilityAttachment(
+                                              quoteInfo[0]['feas_file_name']),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                const Divider(height: 20, thickness: 1),
+                                const Text(
+                                  'Feasibility History',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
-                                feasibility == null ||
-                                        feasibility!['historyData'] == null
-                                    ? const Center(
-                                        child: Text(
-                                            "No Feasibility history available"),
-                                      )
-                                    : FeasibilityHistory(history: feasibility),
+                                if (feasibility == null ||
+                                    feasibility!['historyData'] == null)
+                                  const Center(
+                                    child: Text(
+                                      "No Feasibility history available",
+                                      style: TextStyle(fontSize: 11),
+                                    ),
+                                  )
+                                else
+                                  FeasibilityHistory(history: feasibility),
                               ],
                             ),
                           )
@@ -224,35 +258,33 @@ class _DetailsQueryState extends ConsumerState<DetailsQuery>
       return const Text("No Feasibility Attachment");
     }
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () async {
-          final Uri url = Uri.parse(fileUrl);
-          if (await canLaunchUrl(url)) {
-            await launchUrl(url, mode: LaunchMode.externalApplication);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Could not open the file")),
-            );
-          }
-        },
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(Icons.link, color: Colors.blue),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                "View File",
-                style: TextStyle(
-                  color: Colors.blue,
-                  decoration: TextDecoration.underline,
-                ),
-                overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: () async {
+        final Uri url = Uri.parse(fileUrl);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Could not open the file")),
+          );
+        }
+      },
+      child: const Row(
+        children: [
+          Icon(Icons.link, color: Colors.blue, size: 16),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              "View File",
+              style: TextStyle(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+                fontSize: 11,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -861,8 +861,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   List<dynamic> _sortChatMessagesByDate() {
+    final dateFormat = DateFormat('d MMMM yyyy h:mm a');
+
     return List.from(chat)
-      ..sort((a, b) => int.parse(a['date']).compareTo(int.parse(b['date'])));
+      ..sort((a, b) {
+        try {
+          final dateA = dateFormat.parse(a['date'] ?? '', true);
+          final dateB = dateFormat.parse(b['date'] ?? '', true);
+          return dateA.compareTo(dateB);
+        } catch (e) {
+          print('Date parsing error: $e');
+          return 0;
+        }
+      });
   }
 
   Widget _buildMessageComposer(ThemeData theme) {

@@ -338,14 +338,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Row(
                   children: [
                     Text("#${data["assign_id"] ?? "N/A"}"),
-                    const SizedBox(width: 5),
-                    InkWell(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/scopeCard',
-                              arguments: data['assign_id']);
-                        },
-                        child:
-                            Lottie.asset('assets/json/right.json', height: 25)),
+                    if (data['looppanel_transfer_access'] == '2' ||
+                        data['transfer_type'] == '0') ...[
+                      const SizedBox(width: 5),
+                      InkWell(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/scopeCard',
+                                arguments: data['assign_id']);
+                          },
+                          child: Lottie.asset('assets/json/right.json',
+                              height: 25)),
+                    ]
                   ],
                 ),
               ],
@@ -371,38 +374,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         overflow: TextOverflow.ellipsis),
                   ],
                 ),
-                if (data['looppanel_transfer_access'] == '0' ||
-                    data['looppanel_transfer_access'] == '3')
-                  ElevatedButton(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(Colors.blue),
-                    ),
-                    onPressed: () async {
-                      final response = await ref.read(
-                          requestAccessProvider({'assignId': data['assign_id']})
-                              .future);
-                      print(response);
+                if (data['transfer_type'] != '0')
+                  if (data['looppanel_transfer_access'] == '0' ||
+                      data['looppanel_transfer_access'] == '3')
+                    ElevatedButton(
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(Colors.blue),
+                      ),
+                      onPressed: () async {
+                        final response = await ref.read(requestAccessProvider(
+                            {'assignId': data['assign_id']}).future);
+                        print(response);
 
-                      if (response['status'] == true) {
-                        contactMadeQuery();
-                        Fluttertoast.showToast(msg: response['message']);
-                      } else {
-                        Fluttertoast.showToast(msg: response['error']);
-                      }
-                      print(data['assign_id']);
-                    },
-                    child: const Text('Request Access',
-                        style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ),
-                if (data['looppanel_transfer_access'] == '1')
-                  ElevatedButton(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(Colors.yellow),
+                        if (response['status'] == true) {
+                          contactMadeQuery();
+                          Fluttertoast.showToast(msg: response['message']);
+                        } else {
+                          Fluttertoast.showToast(msg: response['error']);
+                        }
+                        print(data['assign_id']);
+                      },
+                      child: const Text('Request Access',
+                          style: TextStyle(color: Colors.white, fontSize: 10)),
                     ),
-                    onPressed: () {},
-                    child: const Text('Request Pending',
-                        style: TextStyle(color: Colors.black, fontSize: 10)),
-                  ),
+                if (data['transfer_type'] != '0')
+                  if (data['looppanel_transfer_access'] == '1')
+                    ElevatedButton(
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(Colors.yellow),
+                      ),
+                      onPressed: () {},
+                      child: const Text('Request Pending',
+                          style: TextStyle(color: Colors.black, fontSize: 10)),
+                    ),
               ],
             ),
           ],

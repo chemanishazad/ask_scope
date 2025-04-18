@@ -29,6 +29,7 @@ class CustomDropDown extends StatefulWidget {
 
 class _CustomDropDownState extends State<CustomDropDown> {
   String? _selectedItem;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -36,21 +37,92 @@ class _CustomDropDownState extends State<CustomDropDown> {
     if (widget.initialValue != null &&
         widget.items.contains(widget.initialValue)) {
       _selectedItem = widget.initialValue;
-    } else {
-      _selectedItem = null;
     }
+  }
+
+  void _openSearchDialog() {
+    List<String> filteredItems = [...widget.items];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          contentPadding: const EdgeInsets.all(10),
+          content: SizedBox(
+            width: 300,
+            height: 500,
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          filteredItems = widget.items
+                              .where((item) => item
+                                  .toLowerCase()
+                                  .contains(value.toLowerCase()))
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: filteredItems.isNotEmpty
+                          ? ListView.builder(
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, index) {
+                                return ListTile(
+                                  title: Text(
+                                    filteredItems[index],
+                                    style: const TextStyle(fontSize: 10.0),
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedItem = filteredItems[index];
+                                      _searchController.clear();
+                                    });
+                                    if (widget.onSelectionChanged != null) {
+                                      widget.onSelectionChanged!(
+                                          filteredItems[index]);
+                                    }
+                                    Navigator.pop(context);
+                                  },
+                                );
+                              },
+                            )
+                          : const Center(child: Text('No items found')),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      width: widget.dropdownWidth,
-      height: widget.dropdownHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      decoration: cardDecoration(context: context),
-      child: DropdownButtonHideUnderline(
+    return GestureDetector(
+      onTap: _openSearchDialog,
+      child: Container(
+        width: widget.dropdownWidth,
+        height: widget.dropdownHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: cardDecoration(context: context),
         child: Row(
           children: [
             Icon(
@@ -60,46 +132,18 @@ class _CustomDropDownState extends State<CustomDropDown> {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                hint: Text(
-                  widget.title ?? 'Please select',
-                  // style: theme.textTheme.bodySmall?.copyWith(
-                  //   color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  // ), // Themed hint text style
-                ),
-                value: _selectedItem,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.grey,
-                ),
-                iconSize: 20,
-                elevation: 4,
+              child: Text(
+                _selectedItem ?? widget.title ?? 'Please select',
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface, // Dropdown text color
+                  fontSize: 10,
+                  color: _selectedItem == null
+                      ? Colors.grey
+                      : theme.colorScheme.onSurface,
                 ),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedItem = newValue;
-                    });
-                    if (widget.onSelectionChanged != null) {
-                      widget.onSelectionChanged!(newValue);
-                    }
-                  }
-                },
-                items:
-                    widget.items.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      value,
-                      style: theme.textTheme.bodySmall, // Themed menu item text
-                    ),
-                  );
-                }).toList(),
               ),
             ),
+            const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
           ],
         ),
       ),

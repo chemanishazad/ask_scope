@@ -114,7 +114,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                       title('Currency'),
                       CustomDropDown(
                         dropdownWidth: MediaQuery.sizeOf(context).width / 2.2,
-                        icon: Icons.currency_rupee_rounded,
+                        icon: Icons.money,
                         items: currencyMap.keys.toList(),
                         title: 'Select Currency',
                         onSelectionChanged: widget.onCurrencyChanged,
@@ -139,11 +139,10 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                       CustomMultiSelectDropDown(
                         dropdownWidth: MediaQuery.sizeOf(context).width / 2.2,
                         icon: Icons.design_services,
-                        items: serviceMap, // Pass the map (name -> id)
+                        items: serviceMap,
                         title: 'Select Service',
                         onSelectionChanged: (selectedIds) {
-                          widget.onServiceChanged(
-                              selectedIds.join(', ')); // ✅ Send IDs
+                          widget.onServiceChanged(selectedIds.join(', '));
                         },
                       ),
                     ],
@@ -191,6 +190,8 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   title('Subject Area'),
                   CustomDropDown(
@@ -211,7 +212,6 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                       width: MediaQuery.of(context).size.width / 2.2,
                       height: 40,
                       child: TextField(
-                        
                         decoration: InputDecoration(
                           hintText: widget.customSubjectType ?? "Enter Subject",
                           filled: true,
@@ -238,7 +238,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
             ],
           ),
           const SizedBox(height: 12),
-          title('Select Level'),
+          title('Select Plan'),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -265,7 +265,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
           const SizedBox(height: 8),
           if (widget.isBasicSelected) ...[
             const Text(
-              "Add comment for Basic Plan (optional)",
+              "Add comment for Basic Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -329,7 +329,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
           const SizedBox(height: 8),
           if (widget.isStandardSelected) ...[
             const Text(
-              "Add comment for Standard Plan (optional)",
+              "Add comment for Standard Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -393,7 +393,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
           const SizedBox(height: 8),
           if (widget.isAdvancedSelected) ...[
             const Text(
-              "Add comment for Advanced Plan (optional)",
+              "Add comment for Advanced Plan",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -467,7 +467,7 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
                 children: [
                   title('Select User to Assign'),
                   CustomDropDown(
-                    dropdownWidth: MediaQuery.sizeOf(context).width,
+                    dropdownWidth: MediaQuery.sizeOf(context).width / 2,
                     icon: Icons.account_circle_outlined,
                     items: userMap.keys.toList(),
                     title: 'Select User',
@@ -591,8 +591,11 @@ class _AskForFeasibilityTabState extends ConsumerState<AskForFeasibilityTab> {
   Widget title(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 4),
-      child: Text(
-        title,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+        ),
       ),
     );
   }

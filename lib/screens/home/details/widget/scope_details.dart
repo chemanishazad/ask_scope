@@ -10,8 +10,13 @@ import 'package:number_to_words/number_to_words.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ScopeDetailsCard extends ConsumerStatefulWidget {
+  final VoidCallback? onDemoSaved;
   final Map<String, dynamic> quote;
-  const ScopeDetailsCard({super.key, required this.quote});
+  const ScopeDetailsCard({
+    super.key,
+    required this.quote,
+    this.onDemoSaved,
+  });
   @override
   ConsumerState<ConsumerStatefulWidget> createState() =>
       _ScopeDetailsCardState();
@@ -60,6 +65,36 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
               _buildInfoRow('Old Plan', widget.quote['old_plan']),
             _buildPlanDescription(
                 widget.quote['plan_comments'], widget.quote['word_counts']),
+            if (widget.quote['client_academic_level'] != null ||
+                widget.quote['results_section'] != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.quote['client_academic_level'] != null)
+                      _buildDetailRow(
+                        title: 'Academic Level',
+                        value: widget.quote['client_academic_level'],
+                        icon: Icons.school_outlined,
+                      ),
+                    if (widget.quote['results_section'] != null)
+                      _buildDetailRow(
+                        title: 'Results Section',
+                        value: widget.quote['results_section'],
+                        icon: Icons.assignment_outlined,
+                      ),
+                  ],
+                ),
+              ),
             if (widget.quote['comments'] != null &&
                 widget.quote['comments'].isNotEmpty)
               Padding(
@@ -179,7 +214,9 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
                           }).future);
                           if (response['status'] == true) {
                             Fluttertoast.showToast(msg: response['message']);
-                            Navigator.pop(context);
+                            if (widget.onDemoSaved != null) {
+                              widget.onDemoSaved!();
+                            }
                             setState(() {
                               demoField = false;
                             });
@@ -245,6 +282,47 @@ class _ScopeDetailsCardState extends ConsumerState<ScopeDetailsCard> {
             const SizedBox(height: 8),
           ],
         ));
+  }
+
+  Widget _buildDetailRow({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF2196F3)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF616161),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildRelevantFilesSection(List<Map<String, dynamic>> files) {

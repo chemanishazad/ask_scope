@@ -68,8 +68,8 @@ class _UpdateFollowerScreenState extends ConsumerState<UpdateFollowerScreen> {
               data: (currencies) {
                 final tagMap = {
                   for (var tag in currencies)
-                    tag['fld_first_name'].toString() +
-                        tag['fld_last_name'].toString(): tag['id'].toString(),
+                    '${tag['fld_first_name']} ${tag['fld_last_name']}':
+                        tag['id'].toString(),
                 };
 
                 return Column(
@@ -78,6 +78,7 @@ class _UpdateFollowerScreenState extends ConsumerState<UpdateFollowerScreen> {
                     title('Select Followers'),
                     const SizedBox(height: 10),
                     CustomMultiSelectDropDown(
+                      dialogTitle: 'Select Followers',
                       dropdownWidth: MediaQuery.sizeOf(context).width,
                       icon: Icons.tag,
                       items: tagMap,

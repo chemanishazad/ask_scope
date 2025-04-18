@@ -9,6 +9,7 @@ class CustomMultiSelectDropDown extends StatefulWidget {
   final List<String>? initialValues;
   final double dropdownWidth;
   final double dropdownHeight;
+  final String dialogTitle;
 
   const CustomMultiSelectDropDown({
     super.key,
@@ -19,7 +20,8 @@ class CustomMultiSelectDropDown extends StatefulWidget {
     this.initialValues,
     this.iconColor,
     this.dropdownWidth = 200,
-    this.dropdownHeight = 40,
+    this.dropdownHeight = 45,
+    this.dialogTitle = "Select Items",
   });
 
   @override
@@ -48,8 +50,9 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
       context: context,
       builder: (BuildContext context) {
         return MultiSelectDialog(
+          title: widget.dialogTitle,
           items: widget.items,
-          selectedItems: _selectedNames, // Pass selected names
+          selectedItems: _selectedNames,
         );
       },
     );
@@ -62,14 +65,14 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
       });
 
       if (widget.onSelectionChanged != null) {
-        widget.onSelectionChanged!(_selectedIds); // ✅ Pass IDs
+        widget.onSelectionChanged!(_selectedIds); // Return selected IDs
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    String selectedText =
+    final selectedText =
         _selectedNames.isEmpty ? widget.title : _selectedNames.join(', ');
 
     return GestureDetector(
@@ -77,33 +80,24 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
       child: Container(
         width: widget.dropdownWidth,
         height: widget.dropdownHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
-            Icon(widget.icon, size: 20),
+            Icon(widget.icon, size: 20, color: widget.iconColor),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 selectedText,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(right: 4.0),
-              child: Icon(Icons.arrow_drop_down_outlined,
-                  color: Colors.grey, size: 24),
-            ),
+            const Icon(Icons.arrow_drop_down, size: 22, color: Colors.grey),
           ],
         ),
       ),
@@ -114,45 +108,86 @@ class _CustomMultiSelectDropDownState extends State<CustomMultiSelectDropDown> {
 class MultiSelectDialog extends StatefulWidget {
   final Map<String, String> items;
   final List<String> selectedItems;
+  final String title;
 
-  const MultiSelectDialog(
-      {super.key, required this.items, required this.selectedItems});
+  const MultiSelectDialog({
+    super.key,
+    required this.items,
+    required this.selectedItems,
+    this.title = "Select Items",
+  });
 
   @override
   State<MultiSelectDialog> createState() => _MultiSelectDialogState();
 }
 
 class _MultiSelectDialogState extends State<MultiSelectDialog> {
+  late List<String> _filteredList;
   late List<String> _selectedItems;
+  TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _filteredList = widget.items.keys.toList();
     _selectedItems = List.from(widget.selectedItems);
+  }
+
+  void _filterList(String query) {
+    setState(() {
+      _filteredList = widget.items.keys
+          .where((name) => name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Select Services"),
-      content: SingleChildScrollView(
+      title: Text(widget.title),
+      content: Container(
+        width: double.maxFinite,
+        height: 500,
         child: Column(
-          children: widget.items.keys.map((name) {
-            final isSelected = _selectedItems.contains(name);
-            return CheckboxListTile(
-              title: Text(name),
-              value: isSelected,
-              onChanged: (bool? value) {
-                setState(() {
-                  if (value == true) {
-                    _selectedItems.add(name);
-                  } else {
-                    _selectedItems.remove(name);
-                  }
-                });
-              },
-            );
-          }).toList(),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: searchController,
+              onChanged: _filterList,
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _filteredList.length,
+                itemBuilder: (context, index) {
+                  final name = _filteredList[index];
+                  final isSelected = _selectedItems.contains(name);
+                  return CheckboxListTile(
+                    title: Text(name),
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedItems.add(name);
+                        } else {
+                          _selectedItems.remove(name);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
